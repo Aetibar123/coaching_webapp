@@ -17,4 +17,12 @@ export class BatchQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  teacher_id?: string;
+
+  @IsOptional()
+  @IsString()
+  teacher_email?: string;
 }

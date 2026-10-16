@@ -31,4 +31,3 @@ describe('SupabaseService', () => {
     expect(service).toBeDefined();
   });
 });
-

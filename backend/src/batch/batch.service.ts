@@ -57,7 +57,10 @@ export class BatchService {
   /**
    * Retrieve all batches with optional course, status, or search filters
    */
-  async findAllBatches(query?: BatchQueryDto) {
+  async findAllBatches(
+    query?: BatchQueryDto,
+    userContext?: { role?: string; email?: string },
+  ) {
     const supabase = this.supabaseService.getClient();
 
     try {
@@ -72,6 +75,43 @@ export class BatchService {
       if (query?.search) {
         request = request.ilike('name', `%${query.search}%`);
       }
+      if (query?.teacher_id) {
+        request = request.eq('teacher_id', query.teacher_id);
+      }
+
+      // Check teacher role filtering
+      const isTeacherRole = userContext?.role?.toLowerCase() === 'teacher';
+      const effectiveTeacherEmail =
+        query?.teacher_email || (isTeacherRole ? userContext?.email : undefined);
+
+      if (effectiveTeacherEmail) {
+        // Resolve teacher by email
+        const teacherRes = (await supabase
+          .from('teachers')
+          .select('id, name')
+          .eq('email', effectiveTeacherEmail.toLowerCase().trim())
+          .maybeSingle()) as {
+          data: { id: string; name: string } | null;
+          error: { message: string } | null;
+        };
+
+        const teacherData = teacherRes.data;
+
+        if (teacherData) {
+          // Filter by teacher_id or instructor name
+          request = request.or(
+            `teacher_id.eq.${teacherData.id},instructor.ilike.${teacherData.name}`,
+          );
+        } else if (isTeacherRole) {
+          // If logged in as teacher but not assigned to any teacher profile yet, return 0 batches
+          return {
+            success: true,
+            message: 'No batches assigned to this teacher',
+            count: 0,
+            data: [],
+          };
+        }
+      }
 
       const { data, error } = await request;
 
@@ -83,7 +123,7 @@ export class BatchService {
         success: true,
         message: 'All batches retrieved successfully',
         count: data?.length ?? 0,
-        data,
+        data: data ?? [],
       };
     } catch (error) {
       this.logger.error('Batch Find All Error:', error);
@@ -157,7 +197,9 @@ export class BatchService {
         .maybeSingle();
 
       if (error) {
-        throw new BadRequestException(`Supabase Update Error: ${error.message}`);
+        throw new BadRequestException(
+          `Supabase Update Error: ${error.message}`,
+        );
       }
 
       if (!data) {
@@ -198,7 +240,9 @@ export class BatchService {
         .maybeSingle();
 
       if (error) {
-        throw new BadRequestException(`Supabase Delete Error: ${error.message}`);
+        throw new BadRequestException(
+          `Supabase Delete Error: ${error.message}`,
+        );
       }
 
       if (!data) {
@@ -285,9 +329,7 @@ export class BatchService {
         .eq('batch_id', batchId);
 
       if (countError) {
-        throw new BadRequestException(
-          `Supabase Error: ${countError.message}`,
-        );
+        throw new BadRequestException(`Supabase Error: ${countError.message}`);
       }
 
       if (count !== null && count >= batch.capacity) {
@@ -322,9 +364,7 @@ export class BatchService {
         .maybeSingle();
 
       if (updateError) {
-        throw new BadRequestException(
-          `Supabase Error: ${updateError.message}`,
-        );
+        throw new BadRequestException(`Supabase Error: ${updateError.message}`);
       }
 
       return {
@@ -397,9 +437,7 @@ export class BatchService {
         .maybeSingle();
 
       if (updateError) {
-        throw new BadRequestException(
-          `Supabase Error: ${updateError.message}`,
-        );
+        throw new BadRequestException(`Supabase Error: ${updateError.message}`);
       }
 
       return {
@@ -443,7 +481,8 @@ export class BatchService {
 
       const enrolled = count ?? 0;
       const capacity = batch.capacity ?? null;
-      const availableSeats = capacity !== null ? Math.max(0, capacity - enrolled) : null;
+      const availableSeats =
+        capacity !== null ? Math.max(0, capacity - enrolled) : null;
       const occupancyRate =
         capacity !== null && capacity > 0
           ? `${Math.min(100, Math.round((enrolled / capacity) * 100))}%`

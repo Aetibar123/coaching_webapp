@@ -5,6 +5,12 @@ import { ConfigModule } from '@nestjs/config';
 import { SupabaseModule } from './supabase/supabase.module';
 import { StudentModule } from './student/student.module';
 import { BatchModule } from './batch/batch.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { ProfileModule } from './profile/profile.module';
+import { TeacherModule } from './teacher/teacher.module';
+
+import { APP_GUARD } from '@nestjs/core';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -12,9 +18,17 @@ import { BatchModule } from './batch/batch.module';
     SupabaseModule,
     StudentModule,
     BatchModule,
+    AttendanceModule,
+    ProfileModule,
+    TeacherModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
 })
 export class AppModule {}
-

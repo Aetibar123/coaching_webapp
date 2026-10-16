@@ -44,4 +44,8 @@ export class CreateBatchDto {
   @IsString()
   @IsOptional()
   status?: string;
+
+  @IsString()
+  @IsOptional()
+  teacher_id?: string;
 }
