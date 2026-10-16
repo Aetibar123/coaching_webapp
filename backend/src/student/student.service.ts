@@ -112,7 +112,9 @@ export class StudentService {
     const supabase = this.supabaseService.getClient();
 
     if (!updateData || Object.keys(updateData).length === 0) {
-      throw new BadRequestException('At least one field must be provided to update');
+      throw new BadRequestException(
+        'At least one field must be provided to update',
+      );
     }
 
     try {
@@ -125,7 +127,9 @@ export class StudentService {
         .maybeSingle();
 
       if (error) {
-        throw new BadRequestException(`Supabase Update Error: ${error.message}`);
+        throw new BadRequestException(
+          `Supabase Update Error: ${error.message}`,
+        );
       }
 
       // Agar data empty hai iska matlab us ID ka student database mein nahi tha
@@ -165,7 +169,9 @@ export class StudentService {
         .maybeSingle();
 
       if (error) {
-        throw new BadRequestException(`Supabase Delete Error: ${error.message}`);
+        throw new BadRequestException(
+          `Supabase Delete Error: ${error.message}`,
+        );
       }
 
       if (!data) {

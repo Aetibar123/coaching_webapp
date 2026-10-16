@@ -7,32 +7,43 @@ import {
   Delete,
   Patch,
   Query,
+  Headers,
 } from '@nestjs/common';
 import { BatchService } from './batch.service';
 import { CreateBatchDto } from './dto/CreateBatch.dto';
 import { UpdateBatchDto } from './dto/UpdateBatch.dto';
 import { AssignStudentDto, BatchQueryDto } from './dto/AssignStudent.dto';
+import { Role } from '../common/enums/role.enum';
+import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('batch')
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}
 
   /**
-   * Create a new batch
+   * Create a new batch (Admin only)
    * POST /batch
    */
   @Post()
+  @Roles(Role.ADMIN)
   createBatch(@Body() createBatchDto: CreateBatchDto) {
     return this.batchService.createBatch(createBatchDto);
   }
 
   /**
-   * List all batches with optional course, status, or search filters
-   * GET /batch?course=...&status=...&search=...
+   * List all batches with optional course, status, search, or teacher filters
+   * GET /batch?course=...&status=...&search=...&teacher_id=...&teacher_email=...
    */
   @Get()
-  findAllBatches(@Query() query: BatchQueryDto) {
-    return this.batchService.findAllBatches(query);
+  findAllBatches(
+    @Query() query: BatchQueryDto,
+    @Headers('x-user-role') roleHeader?: string,
+    @Headers('x-user-email') emailHeader?: string,
+  ) {
+    return this.batchService.findAllBatches(query, {
+      role: roleHeader,
+      email: emailHeader,
+    });
   }
 
   /**
@@ -45,22 +56,21 @@ export class BatchController {
   }
 
   /**
-   * Update an existing batch
+   * Update an existing batch (Admin only)
    * PATCH /batch/:id
    */
   @Patch(':id')
-  updateBatch(
-    @Param('id') id: string,
-    @Body() updateBatchDto: UpdateBatchDto,
-  ) {
+  @Roles(Role.ADMIN)
+  updateBatch(@Param('id') id: string, @Body() updateBatchDto: UpdateBatchDto) {
     return this.batchService.updateBatch(id, updateBatchDto);
   }
 
   /**
-   * Delete a batch
+   * Delete a batch (Admin only)
    * DELETE /batch/:id
    */
   @Delete(':id')
+  @Roles(Role.ADMIN)
   deleteBatch(@Param('id') id: string) {
     return this.batchService.deleteBatch(id);
   }
@@ -88,10 +98,7 @@ export class BatchController {
    * POST /batch/:id/students
    */
   @Post(':id/students')
-  assignStudent(
-    @Param('id') id: string,
-    @Body() assignDto: AssignStudentDto,
-  ) {
+  assignStudent(@Param('id') id: string, @Body() assignDto: AssignStudentDto) {
     return this.batchService.addStudentToBatch(id, assignDto.student_id);
   }
 
@@ -108,10 +115,11 @@ export class BatchController {
   }
 
   /**
-   * Remove an enrolled student from a batch
+   * Remove an enrolled student from a batch (Admin only)
    * DELETE /batch/:id/students/:studentId
    */
   @Delete(':id/students/:studentId')
+  @Roles(Role.ADMIN)
   removeStudentFromBatch(
     @Param('id') id: string,
     @Param('studentId') studentId: string,
