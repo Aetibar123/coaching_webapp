@@ -136,27 +136,86 @@ export function StudentsClient({
     }
   };
 
+  const assignedCount = students.filter((s) => s.batch_id).length;
+  const unassignedCount = students.length - assignedCount;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            Student Directory
-          </h2>
-          <p className="text-sm text-slate-500">
-            View, enroll, and manage student profiles and batch assignments.
+      {/* Hero Banner (Home Page Signature Dark Bento) */}
+      <div className="rounded-3xl bg-slate-950 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800/80">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.3),rgba(255,255,255,0))]" />
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="space-y-2.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-3.5 py-1 text-xs font-mono font-medium text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <span>[ 02 DIRECTORY // ROSTER ]</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-400 font-normal">Student Registry</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              Student Directory &{" "}
+              <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-white bg-clip-text text-transparent">
+                Enrollment Master
+              </span>
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xl font-normal leading-relaxed">
+              Centralized student roster across all courses. Query profiles, manage cohort assignments, and track attendance records with zero latency.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {isAdmin && (
+              <button
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-950 shadow-md hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                <span>+</span> Register Student
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Metrics Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 font-mono">
+            {students.length}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Total Enrolled
           </p>
         </div>
 
-        {isAdmin && (
-          <button
-            onClick={openCreateModal}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-all cursor-pointer"
-          >
-            <span>+</span> Register Student
-          </button>
-        )}
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600 font-mono">
+            {assignedCount}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Assigned to Batches
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-amber-600 font-mono">
+            {unassignedCount}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Unassigned
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-indigo-600 font-mono">
+            {batches.length}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Total Cohorts
+          </p>
+        </div>
       </div>
 
       {/* Filter and Search */}

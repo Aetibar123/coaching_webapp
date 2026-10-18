@@ -8,6 +8,8 @@ import { BatchModule } from './batch/batch.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { ProfileModule } from './profile/profile.module';
 import { TeacherModule } from './teacher/teacher.module';
+import { ClassModule } from './class/class.module';
+import { AssignmentModule } from './assignment/assignment.module';
 
 import { APP_GUARD } from '@nestjs/core';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -21,6 +23,8 @@ import { RolesGuard } from './common/guards/roles.guard';
     AttendanceModule,
     ProfileModule,
     TeacherModule,
+    ClassModule,
+    AssignmentModule,
   ],
   controllers: [AppController],
   providers: [

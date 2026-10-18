@@ -1,22 +1,68 @@
 "use client";
 
 import { useState } from "react";
-import { api, type Batch, type Student } from "@/lib/api";
+import {
+  api,
+  type Batch,
+  type Student,
+  type ClassItem,
+  type CreateClassInput,
+  type RescheduleClassInput,
+} from "@/lib/api";
 import Link from "next/link";
 
 interface DashboardClientProps {
   initialBatches: Batch[];
   initialStudents: Student[];
+  initialClasses?: ClassItem[];
   userName: string;
+  userRole?: string;
+  userEmail?: string;
 }
 
 export function DashboardClient({
   initialBatches,
   initialStudents,
+  initialClasses = [],
   userName,
+  userRole,
+  userEmail,
 }: DashboardClientProps) {
   const [batches, setBatches] = useState<Batch[]>(initialBatches);
   const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [upcomingClasses, setUpcomingClasses] = useState<ClassItem[]>(initialClasses);
+
+  const isTeacher = userRole === "teacher";
+
+  // Class Scheduling & Rescheduling States
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
+  const [classSubmitting, setClassSubmitting] = useState(false);
+  const [classForm, setClassForm] = useState<CreateClassInput>({
+    batch_id: batches[0]?.id ? String(batches[0].id) : "",
+    title: "",
+    description: "",
+    date: new Date().toISOString().split("T")[0],
+    start_time: "10:00",
+    end_time: "11:30",
+    room: "",
+    meeting_link: "",
+  });
+
+  const [rescheduleTarget, setRescheduleTarget] = useState<ClassItem | null>(null);
+  const [rescheduleSubmitting, setRescheduleSubmitting] = useState(false);
+  const [rescheduleForm, setRescheduleForm] = useState<RescheduleClassInput>({
+    date: "",
+    start_time: "",
+    end_time: "",
+    reason: "",
+    room: "",
+    meeting_link: "",
+  });
+
+  const [dashboardNotification, setDashboardNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   // Quick Create Batch Modal
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -45,6 +91,112 @@ export function DashboardClient({
   const [studentError, setStudentError] = useState<string | null>(null);
 
   const activeBatches = batches.filter((b) => b.status === "active");
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayClassesCount = upcomingClasses.filter((c) => c.date === todayStr).length;
+
+  const handleScheduleClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!classForm.batch_id || !classForm.title || !classForm.date) return;
+    setClassSubmitting(true);
+    setDashboardNotification(null);
+
+    try {
+      const created = await api.classes.create({
+        ...classForm,
+        title: classForm.title.trim(),
+        description: classForm.description?.trim() || undefined,
+        room: classForm.room?.trim() || undefined,
+        meeting_link: classForm.meeting_link?.trim() || undefined,
+      });
+
+      if (created) {
+        setUpcomingClasses((prev) => [created, ...prev]);
+        setDashboardNotification({
+          type: "success",
+          message: `Class "${created.title}" scheduled successfully for ${created.date}!`,
+        });
+        setIsClassModalOpen(false);
+        setClassForm({
+          batch_id: batches[0]?.id ? String(batches[0].id) : "",
+          title: "",
+          description: "",
+          date: new Date().toISOString().split("T")[0],
+          start_time: "10:00",
+          end_time: "11:30",
+          room: "",
+          meeting_link: "",
+        });
+      }
+    } catch (err) {
+      setDashboardNotification({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to schedule class",
+      });
+    } finally {
+      setClassSubmitting(false);
+    }
+  };
+
+  const openRescheduleModal = (cls: ClassItem) => {
+    setRescheduleTarget(cls);
+    setRescheduleForm({
+      date: cls.date,
+      start_time: cls.start_time?.substring(0, 5) || "10:00",
+      end_time: cls.end_time?.substring(0, 5) || "11:30",
+      reason: "",
+      room: cls.room || "",
+      meeting_link: cls.meeting_link || "",
+    });
+  };
+
+  const handleRescheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rescheduleTarget) return;
+    setRescheduleSubmitting(true);
+    setDashboardNotification(null);
+
+    try {
+      const updated = await api.classes.reschedule(rescheduleTarget.id, {
+        date: rescheduleForm.date,
+        start_time: rescheduleForm.start_time,
+        end_time: rescheduleForm.end_time,
+        reason: rescheduleForm.reason?.trim() || "Rescheduled by instructor",
+        room: rescheduleForm.room?.trim() || undefined,
+        meeting_link: rescheduleForm.meeting_link?.trim() || undefined,
+      });
+
+      if (updated) {
+        setUpcomingClasses((prev) =>
+          prev.map((c) =>
+            c.id === rescheduleTarget.id
+              ? {
+                  ...c,
+                  ...updated,
+                  status: "rescheduled",
+                  original_date: rescheduleTarget.date,
+                  original_time: rescheduleTarget.start_time,
+                  reschedule_reason: rescheduleForm.reason,
+                }
+              : c
+          )
+        );
+        setDashboardNotification({
+          type: "success",
+          message: `Class rescheduled to ${rescheduleForm.date} at ${rescheduleForm.start_time}!`,
+        });
+        setRescheduleTarget(null);
+      }
+    } catch (err) {
+      setDashboardNotification({
+        type: "error",
+        message:
+          err instanceof Error ? err.message : "Failed to reschedule class",
+      });
+    } finally {
+      setRescheduleSubmitting(false);
+    }
+  };
 
   const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,136 +272,377 @@ export function DashboardClient({
 
   return (
     <div className="space-y-8">
-      {/* Welcome Hero Banner with Quick Actions */}
-      <div className="rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 p-8 text-white shadow-xl shadow-blue-500/10">
+      {/* Notification Banner */}
+      {dashboardNotification && (
+        <div
+          className={`rounded-2xl p-4 text-sm font-medium flex items-center justify-between border ${
+            dashboardNotification.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-red-50 text-red-800 border-red-200"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span>{dashboardNotification.type === "success" ? "✓" : "⚠️"}</span>
+            <span>{dashboardNotification.message}</span>
+          </div>
+          <button
+            onClick={() => setDashboardNotification(null)}
+            className="text-xs font-bold underline opacity-70 hover:opacity-100 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Welcome Hero Banner with Quick Actions (Home Page Signature Dark Bento) */}
+      <div className="rounded-3xl bg-slate-950 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800/80">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.3),rgba(255,255,255,0))]" />
+
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
-            <span className="inline-flex items-center gap-2 rounded-full bg-blue-500/30 px-3 py-1 text-xs font-semibold text-blue-100 backdrop-blur-sm">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              Live Institute Console
-            </span>
-            <h2 className="text-3xl font-extrabold tracking-tight">
-              Welcome back, {userName}!
+          <div className="space-y-2.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-3.5 py-1 text-xs font-mono font-medium text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>{isTeacher ? "FACULTY // CONSOLE" : "v2.4 // OPERATIONAL CONSOLE"}</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-400 font-normal">Active Session</span>
+            </div>
+
+            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              Welcome back,{" "}
+              <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-white bg-clip-text text-transparent">
+                {userName}!
+              </span>
             </h2>
-            <p className="text-sm text-blue-100/90 max-w-xl">
-              Manage your cohorts, student directory, and instant session
-              attendance from this command center.
+
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xl font-normal leading-relaxed">
+              {isTeacher
+                ? "Manage your assigned cohorts, schedule upcoming lectures, and conduct instant student assessments with database precision."
+                : "Orchestrate your course batches, student directory, class schedule, and track attendance with sub-millisecond reliability."}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Show New Batch and Register Student ONLY for Admin */}
+            {!isTeacher && (
+              <>
+                <button
+                  onClick={() => setIsBatchModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-950 shadow-md hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  <span>+</span> New Batch
+                </button>
+                <button
+                  onClick={() => setIsStudentModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  <span>+</span> Register Student
+                </button>
+              </>
+            )}
+
+            {/* Class Schedule Quick Action for Both Admin & Teacher */}
             <button
-              onClick={() => setIsBatchModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-50 transition-all cursor-pointer"
+              onClick={() => setIsClassModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-500 transition-all cursor-pointer"
             >
-              <span>+</span> New Batch
+              <span>+</span> Schedule Class
             </button>
-            <button
-              onClick={() => setIsStudentModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-500/30 px-4 py-2.5 text-xs font-bold text-white border border-blue-400/40 hover:bg-blue-500/50 transition-all cursor-pointer"
-            >
-              <span>+</span> Register Student
-            </button>
+
             <Link
               href="/attendance"
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-500/40 px-4 py-2.5 text-xs font-bold text-white border border-indigo-400/40 hover:bg-indigo-500/60 transition-all"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-all"
             >
               <span>📅</span> Take Attendance
+            </Link>
+
+            <Link
+              href="/classes"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-all"
+            >
+              <span>🗓️</span> Class Schedule →
+            </Link>
+
+            <Link
+              href="/assignments"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-all"
+            >
+              <span>📝</span> MCQs →
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Top Stat Counters */}
+      {/* Top Stat Counters (Bento Grid) */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+        {/* Card 1: Students */}
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Students
-            </p>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 font-bold">
-              🎓
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+              [ 01 ROSTER ]
+            </span>
+            <span className="rounded-lg bg-blue-50 px-2 py-0.5 text-[10px] font-mono font-bold text-blue-700">
+              STUDENTS
             </span>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-slate-900">
-            {students.length}
-          </p>
-          <div className="mt-2 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Registered in system</span>
+          <div className="my-3">
+            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono">
+              {students.length}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {isTeacher ? "Enrolled in your cohorts" : "Total registered students"}
+            </p>
+          </div>
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-400 font-mono">Active Directory</span>
             <Link
               href="/students"
-              className="font-semibold text-blue-600 hover:text-blue-800"
+              className="font-bold text-blue-600 hover:text-blue-800"
             >
-              Manage →
+              View Directory →
             </Link>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+        {/* Card 2: Batches */}
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Batches
-            </p>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 font-bold">
-              📚
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+              [ 02 COHORTS ]
+            </span>
+            <span className="rounded-lg bg-indigo-50 px-2 py-0.5 text-[10px] font-mono font-bold text-indigo-700">
+              BATCHES
             </span>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-slate-900">
-            {batches.length}
-          </p>
-          <div className="mt-2 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Across all courses</span>
+          <div className="my-3">
+            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono">
+              {batches.length}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {isTeacher ? "Assigned to your care" : "Active courses & batches"}
+            </p>
+          </div>
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-400 font-mono">Capacity Guard On</span>
             <Link
               href="/batches"
-              className="font-semibold text-indigo-600 hover:text-indigo-800"
+              className="font-bold text-indigo-600 hover:text-indigo-800"
             >
-              View →
+              View Batches →
             </Link>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+        {/* Card 3: Today's Classes */}
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Active Batches
-            </p>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 font-bold">
-              ⚡
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+              [ 03 SCHEDULE ]
+            </span>
+            <span className="rounded-lg bg-amber-50 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-700">
+              TODAY
             </span>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-emerald-600">
-            {activeBatches.length}
-          </p>
-          <div className="mt-2 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Currently in session</span>
-            <span className="font-semibold text-emerald-600">
-              {batches.length > 0
-                ? `${Math.round((activeBatches.length / batches.length) * 100)}% active`
-                : "0%"}
-            </span>
+          <div className="my-3">
+            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-amber-600 font-mono">
+              {todayClassesCount}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Lectures scheduled today
+            </p>
+          </div>
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-400 font-mono">Reschedule Enabled</span>
+            <Link
+              href="/classes"
+              className="font-bold text-amber-600 hover:text-amber-800"
+            >
+              Manage Schedule →
+            </Link>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+        {/* Card 4: Active Batches */}
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Attendance Module
-            </p>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 font-bold">
-              ✅
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+              [ 04 ATTENDANCE ]
+            </span>
+            <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-700">
+              SESSIONS
             </span>
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-purple-600">Active</p>
-          <div className="mt-2 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Bulk .map() insert</span>
+          <div className="my-3">
+            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-emerald-600 font-mono">
+              {activeBatches.length}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Cohorts currently running
+            </p>
+          </div>
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-[11px] text-slate-400 font-mono">Bulk Sync Ready</span>
             <Link
               href="/attendance"
-              className="font-semibold text-purple-600 hover:text-purple-800"
+              className="font-bold text-emerald-600 hover:text-emerald-800"
             >
-              Start →
+              Log Attendance →
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* Upcoming Class Schedule & Reschedule Hub */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🗓️</span>
+              <h3 className="text-lg font-bold text-slate-900">
+                {isTeacher
+                  ? "My Class Schedule & Sessions"
+                  : "Upcoming Class Schedule"}
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Live upcoming sessions across cohorts. Reschedule dates or update rooms with one click.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setIsClassModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              <span>+</span> Schedule Class
+            </button>
+            <Link
+              href="/classes"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+            >
+              Full Calendar ({upcomingClasses.length}) →
+            </Link>
+          </div>
+        </div>
+
+        {upcomingClasses.length === 0 ? (
+          <div className="py-10 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
+            <span className="text-3xl">☕</span>
+            <p className="mt-2 text-xs font-semibold text-slate-700">
+              No classes scheduled yet
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Schedule your first lecture or session to keep students informed.
+            </p>
+            <button
+              onClick={() => setIsClassModalOpen(true)}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 cursor-pointer"
+            >
+              <span>+</span> Schedule a Class
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {upcomingClasses.slice(0, 3).map((cls) => {
+              const isRescheduled = cls.status === "rescheduled";
+              return (
+                <div
+                  key={cls.id}
+                  className={`rounded-2xl border p-4.5 flex flex-col justify-between transition-all ${
+                    isRescheduled
+                      ? "border-amber-200 bg-amber-50/20 shadow-xs"
+                      : "border-slate-200 bg-white shadow-xs hover:shadow-sm"
+                  }`}
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                        {cls.batch_name || "Batch"}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          isRescheduled
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        {cls.status}
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-slate-900 leading-snug">
+                      {cls.title}
+                    </h4>
+
+                    {isRescheduled && (
+                      <div className="rounded-lg bg-amber-50 border border-amber-200/80 p-2 text-[11px] text-amber-800">
+                        <span className="font-semibold block">
+                          ⚠️ Rescheduled Session
+                        </span>
+                        {cls.reschedule_reason && (
+                          <span className="text-amber-900">
+                            Reason: {cls.reschedule_reason}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="space-y-1 text-xs text-slate-600 pt-1">
+                      <div className="flex items-center gap-2">
+                        <span>📅</span>
+                        <span className="font-semibold text-slate-800">
+                          {cls.date}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>⏰</span>
+                        <span>
+                          {cls.start_time?.substring(0, 5)} –{" "}
+                          {cls.end_time?.substring(0, 5)}
+                        </span>
+                      </div>
+                      {cls.room && (
+                        <div className="flex items-center gap-2">
+                          <span>📍</span>
+                          <span>Room: {cls.room}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <button
+                      onClick={() => openRescheduleModal(cls)}
+                      className="font-semibold text-amber-600 hover:text-amber-800 cursor-pointer"
+                    >
+                      Reschedule ↻
+                    </button>
+                    {cls.meeting_link ? (
+                      <a
+                        href={
+                          cls.meeting_link.startsWith("http")
+                            ? cls.meeting_link
+                            : `https://${cls.meeting_link}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-blue-600 hover:text-blue-800"
+                      >
+                        Join Class ↗
+                      </a>
+                    ) : (
+                      <Link
+                        href={`/attendance?batch=${cls.batch_id}&date=${cls.date}`}
+                        className="font-semibold text-slate-500 hover:text-slate-800"
+                      >
+                        Attendance →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Main Panels Grid */}
@@ -258,15 +651,19 @@ export function DashboardClient({
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-slate-900">
-              Active Batches & Cohorts
+              {isTeacher
+                ? "My Assigned Batches & Cohorts"
+                : "Active Batches & Cohorts"}
             </h3>
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsBatchModalOpen(true)}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
-              >
-                + Add Batch
-              </button>
+              {!isTeacher && (
+                <button
+                  onClick={() => setIsBatchModalOpen(true)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                >
+                  + Add Batch
+                </button>
+              )}
               <Link
                 href="/batches"
                 className="text-xs font-semibold text-slate-500 hover:text-slate-800"
@@ -691,6 +1088,339 @@ export function DashboardClient({
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
                 >
                   {studentSubmitting ? "Registering..." : "Save Student"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Class Modal */}
+      {isClassModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Schedule New Class Session
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Add a lecture, lab, or webinar to the cohort schedule.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsClassModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleScheduleClass} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Select Cohort / Batch *
+                </label>
+                <select
+                  required
+                  value={classForm.batch_id}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, batch_id: e.target.value })
+                  }
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.course})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Class Title / Topic *
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. React Hooks Deep Dive, SQL Joins Lab"
+                  value={classForm.title}
+                  onChange={(e) =>
+                    setClassForm({ ...classForm, title: e.target.value })
+                  }
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Date *
+                  </label>
+                  <input
+                    required
+                    type="date"
+                    value={classForm.date}
+                    onChange={(e) =>
+                      setClassForm({ ...classForm, date: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Start Time *
+                  </label>
+                  <input
+                    required
+                    type="time"
+                    value={classForm.start_time}
+                    onChange={(e) =>
+                      setClassForm({
+                        ...classForm,
+                        start_time: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    End Time *
+                  </label>
+                  <input
+                    required
+                    type="time"
+                    value={classForm.end_time}
+                    onChange={(e) =>
+                      setClassForm({ ...classForm, end_time: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Physical Room (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Lab 2, Room 304"
+                    value={classForm.room}
+                    onChange={(e) =>
+                      setClassForm({ ...classForm, room: e.target.value })
+                    }
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Virtual Link (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. meet.google.com/xyz-abc"
+                    value={classForm.meeting_link}
+                    onChange={(e) =>
+                      setClassForm({
+                        ...classForm,
+                        meeting_link: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Description / Agenda (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Topics to be covered in this session..."
+                  value={classForm.description}
+                  onChange={(e) =>
+                    setClassForm({
+                      ...classForm,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsClassModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={classSubmitting}
+                  className="rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+                >
+                  {classSubmitting ? "Scheduling..." : "Schedule Class"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Class Modal */}
+      {rescheduleTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Reschedule Class
+                </h3>
+                <p className="text-xs text-amber-700 font-medium mt-0.5">
+                  Current: {rescheduleTarget.date} at{" "}
+                  {rescheduleTarget.start_time?.substring(0, 5)}
+                </p>
+              </div>
+              <button
+                onClick={() => setRescheduleTarget(null)}
+                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+              <span className="font-bold text-slate-800 block">
+                {rescheduleTarget.title}
+              </span>
+              <span className="text-slate-400">
+                Cohort: {rescheduleTarget.batch_name}
+              </span>
+            </div>
+
+            <form onSubmit={handleRescheduleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  New Date *
+                </label>
+                <input
+                  required
+                  type="date"
+                  value={rescheduleForm.date}
+                  onChange={(e) =>
+                    setRescheduleForm({
+                      ...rescheduleForm,
+                      date: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    New Start Time *
+                  </label>
+                  <input
+                    required
+                    type="time"
+                    value={rescheduleForm.start_time}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        start_time: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    New End Time *
+                  </label>
+                  <input
+                    required
+                    type="time"
+                    value={rescheduleForm.end_time}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        end_time: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Reason for Rescheduling *
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. Instructor emergency, lab maintenance, holiday"
+                  value={rescheduleForm.reason}
+                  onChange={(e) =>
+                    setRescheduleForm({
+                      ...rescheduleForm,
+                      reason: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Updated Room / Meeting Link (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Room 201 or meeting URL"
+                  value={
+                    rescheduleForm.meeting_link || rescheduleForm.room || ""
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.includes("http") || val.includes(".com")) {
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        meeting_link: val,
+                      });
+                    } else {
+                      setRescheduleForm({ ...rescheduleForm, room: val });
+                    }
+                  }}
+                  className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setRescheduleTarget(null)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={rescheduleSubmitting}
+                  className="rounded-xl bg-amber-600 px-5 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50 cursor-pointer"
+                >
+                  {rescheduleSubmitting
+                    ? "Updating..."
+                    : "Confirm Reschedule"}
                 </button>
               </div>
             </form>

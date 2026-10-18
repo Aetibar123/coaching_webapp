@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/utils/getUser";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
-import { api, type Batch, type Student } from "@/lib/api";
+import { api, type Batch, type Student, type ClassItem } from "@/lib/api";
 import { DashboardClient } from "./DashboardClient";
 
 export default async function DashboardPage() {
@@ -10,19 +10,27 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // Fetch batches and students from the backend API
+  // Fetch batches, students, and scheduled classes from the backend API
   let batches: Batch[] = [];
   let students: Student[] = [];
+  let upcomingClasses: ClassItem[] = [];
+
+  const authHeaders = {
+    "x-user-role": user.role || "",
+    "x-user-email": user.email || "",
+  };
 
   try {
     const isTeacher = user.role === "teacher";
-    const [batchesData, studentsData] = await Promise.all([
+    const [batchesData, studentsData, classesData] = await Promise.all([
       isTeacher
         ? api.batches.list({ teacher_email: user.email })
         : api.batches.list(),
       api.students.list(),
+      api.classes.upcoming(10, authHeaders),
     ]);
     batches = batchesData;
+    upcomingClasses = classesData;
 
     if (isTeacher) {
       const assignedBatchIds = new Set(batches.map((b) => String(b.id)));
@@ -41,7 +49,10 @@ export default async function DashboardPage() {
       <DashboardClient
         initialBatches={batches}
         initialStudents={students}
+        initialClasses={upcomingClasses}
         userName={user.fullName || "User"}
+        userRole={user.role}
+        userEmail={user.email}
       />
     </AppShell>
   );

@@ -40,33 +40,45 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl border border-slate-100">
+    <div className="relative min-h-screen bg-[#fafafa] text-slate-900 selection:bg-blue-600 selection:text-white flex flex-col justify-center items-center p-4">
+      {/* Subtle engineering background grid identical to Home page */}
+      <div className="fixed inset-0 -z-10 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-45 pointer-events-none" />
+
+      {/* Top back button */}
+      <div className="absolute top-6 left-6">
+        <a
+          href="/"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white/90 backdrop-blur-xs px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
+        >
+          <span>←</span> Back to Home
+        </a>
+      </div>
+
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 sm:p-10 shadow-xl border border-slate-200/90">
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-xl mb-4 shadow-md shadow-blue-200">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-white font-bold text-xl mb-4 shadow-sm">
             C
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Welcome to Coaching App
+
+          <div className="mb-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-0.5 text-[10px] font-mono font-semibold text-slate-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>AUTH // OAUTH 2.0</span>
+            </span>
+          </div>
+
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-950">
+            CoachingHub Console
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Sign in with your Google account to access your dashboard
+          <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed">
+            Sign in with your institutional Google account to access your coaching batches and rosters.
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-800">
             <div className="flex items-center gap-2">
-              <svg
-                className="h-4 w-4 shrink-0 fill-current"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              <span className="text-rose-600">⚠️</span>
               <span>{error}</span>
             </div>
           </div>
@@ -76,7 +88,7 @@ function LoginForm() {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+          className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200/90 bg-white px-4 py-3.5 text-xs sm:text-sm font-bold text-slate-800 shadow-xs transition-all hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
         >
           {isLoading ? (
             <svg
@@ -100,7 +112,7 @@ function LoginForm() {
               />
             </svg>
           ) : (
-            <svg className="h-5 w-5" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
@@ -119,12 +131,13 @@ function LoginForm() {
               />
             </svg>
           )}
-          <span>{isLoading ? "Connecting to Google..." : "Continue with Google"}</span>
+          <span>{isLoading ? "Connecting to Google..." : "Continue with Google SSO"}</span>
         </button>
 
-        <p className="mt-8 text-center text-xs text-slate-400">
-          By continuing, you agree to the Coaching App Terms of Service and Privacy Policy.
-        </p>
+        <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+          <span>Protected by Supabase</span>
+          <span>OAuth 2.0</span>
+        </div>
       </div>
     </div>
   );

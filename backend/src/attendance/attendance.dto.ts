@@ -66,6 +66,44 @@ export class QueryAttendanceDto {
   student_id?: string;
 }
 
+export class AttendanceAnalyticsQueryDto {
+  @IsOptional()
+  @IsString()
+  batch_id?: string;
+
+  @IsOptional()
+  @IsString()
+  start_date?: string;
+
+  @IsOptional()
+  @IsString()
+  end_date?: string;
+
+  @IsOptional()
+  @IsString()
+  student_id?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string; // 'students' | 'daily' | 'detailed'
+
+  @IsOptional()
+  @IsString()
+  teacher_email?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  role?: string;
+}
+
 // Aliases for convenience
 export { SubmitAttendanceDto as CreateAttendanceDto };
 export { StudentAttendanceItemDto as StudentAttendanceDto };

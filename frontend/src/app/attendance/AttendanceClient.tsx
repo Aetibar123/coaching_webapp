@@ -8,6 +8,7 @@ import {
   type AttendanceRecord,
 } from "@/lib/api";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 interface AttendanceClientProps {
   batches: Batch[];
@@ -182,16 +183,86 @@ export function AttendanceClient({ batches }: AttendanceClientProps) {
 
   const isAlreadyRecorded = existingRecords.length > 0;
 
+  const attendanceRate =
+    students.length > 0
+      ? Math.round((counts.present / students.length) * 100)
+      : 0;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-          Attendance Tracker
-        </h2>
-        <p className="text-sm text-slate-500">
-          Mark daily session attendance by batch and date with one-click bulk submissions.
-        </p>
+      {/* Hero Banner (Home Page Signature Dark Bento) */}
+      <div className="rounded-3xl bg-slate-950 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800/80">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.3),rgba(255,255,255,0))]" />
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="space-y-2.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-3.5 py-1 text-xs font-mono font-medium text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>[ 03 ATTENDANCE // MATRIX ]</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-400 font-normal">Sub-45ms Bulk Sync</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              Session Attendance &{" "}
+              <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-white bg-clip-text text-transparent">
+                Vectorized Ingestion
+              </span>
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xl font-normal leading-relaxed">
+              Mark session rolls by batch and date with 1-click &apos;All Present&apos; and individual status toggles. Atomic bulk insert backed by PostgreSQL.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href={`/reports${selectedBatchId ? `?batch=${selectedBatchId}` : ""}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-950 shadow-md hover:bg-slate-100 transition-all cursor-pointer"
+            >
+              <span>📊</span> Analytics & Reports →
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Metrics Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600 font-mono">
+            {counts.present}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Present Students
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-rose-600 font-mono">
+            {counts.absent}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Absent Students
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-amber-600 font-mono">
+            {counts.late}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Late / Delayed
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-blue-600 font-mono">
+            {attendanceRate}%
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Session Turnout
+          </p>
+        </div>
       </div>
 
       {/* Notification Banner */}
