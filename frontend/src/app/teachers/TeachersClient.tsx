@@ -175,30 +175,83 @@ export function TeachersClient({
     }
   };
 
+  const totalBatchesAssigned = teachers.reduce((acc, t) => acc + (t.batches?.length || 0), 0);
+
   return (
     <div className="space-y-6">
-      {/* Header & New Teacher Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              Faculty & Teachers
-            </h2>
-            <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-              Admin Portal
-            </span>
+      {/* Hero Banner (Home Page Signature Dark Bento) */}
+      <div className="rounded-3xl bg-slate-950 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800/80">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.3),rgba(255,255,255,0))]" />
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="space-y-2.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-3.5 py-1 text-xs font-mono font-medium text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <span>[ 07 FACULTY // DIRECTORY ]</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-400 font-normal">Admin Security Module</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              Faculty Directory &{" "}
+              <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-white bg-clip-text text-transparent">
+                Batch Allocation
+              </span>
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xl font-normal leading-relaxed">
+              Register teachers, allocate batch responsibilities, and oversee cohort instructors with role-scoped security.
+            </p>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Register teachers, allocate batch responsibilities, and oversee cohort instructors.
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-slate-950 shadow-md hover:bg-slate-100 transition-all cursor-pointer"
+            >
+              <span>+</span> Add Teacher
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Metrics Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 font-mono">
+            {teachers.length}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Total Instructors
           </p>
         </div>
 
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-all cursor-pointer"
-        >
-          <span>+</span> Add Teacher
-        </button>
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-blue-600 font-mono">
+            {totalBatchesAssigned}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Allocated Batches
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-purple-600 font-mono">
+            {distinctSubjects.length}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Academic Subjects
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600 font-mono">
+            {allBatches.length}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Total Batches
+          </p>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

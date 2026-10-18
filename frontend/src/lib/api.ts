@@ -81,6 +81,143 @@ export interface BatchStats {
   isFull: boolean;
 }
 
+export interface ClassItem {
+  id: string;
+  batch_id: string | number;
+  batch_name?: string;
+  course?: string;
+  instructor?: string;
+  title: string;
+  description?: string | null;
+  date: string;
+  start_time: string;
+  end_time: string;
+  room?: string | null;
+  meeting_link?: string | null;
+  status: 'scheduled' | 'rescheduled' | 'completed' | 'cancelled';
+  reschedule_reason?: string | null;
+  original_date?: string | null;
+  original_time?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateClassInput {
+  batch_id: string | number;
+  title: string;
+  description?: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  room?: string;
+  meeting_link?: string;
+}
+
+export interface RescheduleClassInput {
+  date: string;
+  start_time: string;
+  end_time: string;
+  reason?: string;
+  room?: string;
+  meeting_link?: string;
+}
+
+export interface UpdateClassInput {
+  title?: string;
+  description?: string;
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+  room?: string;
+  meeting_link?: string;
+  status?: 'scheduled' | 'rescheduled' | 'completed' | 'cancelled';
+}
+
+export interface McqQuestion {
+  id?: string;
+  assignment_id?: string;
+  question_text: string;
+  options: string[];
+  correct_option?: number; // Visible to teachers/admins
+  points?: number;
+  order_index?: number;
+}
+
+export interface Assignment {
+  id: string;
+  batch_id: string | number;
+  batch_name?: string;
+  course?: string;
+  class_id?: string | null;
+  class_title?: string | null;
+  title: string;
+  description?: string | null;
+  due_date?: string | null;
+  total_points: number;
+  created_by?: string | null;
+  status: string;
+  questions_count?: number;
+  submissions_count?: number;
+  created_at?: string;
+  updated_at?: string;
+  questions?: McqQuestion[];
+}
+
+export interface CreateAssignmentInput {
+  batch_id: string | number;
+  class_id?: string | null;
+  title: string;
+  description?: string;
+  due_date?: string;
+  questions: {
+    question_text: string;
+    options: string[];
+    correct_option: number;
+    points?: number;
+  }[];
+}
+
+export interface SubmitAssignmentInput {
+  student_id: string | number;
+  student_email?: string;
+  student_name?: string;
+  answers: {
+    question_id: string;
+    selected_option: number;
+  }[];
+}
+
+export interface AssignmentSubmission {
+  id: string;
+  assignment_id: string;
+  student_id: string | number;
+  student_name: string;
+  student_email?: string;
+  answers: {
+    question_id: string;
+    question_text: string;
+    selected_option: number;
+    correct_option?: number;
+    is_correct: boolean;
+    points_awarded: number;
+    max_points: number;
+  }[];
+  score: number;
+  total_points: number;
+  percentage: number;
+  status: string;
+  submitted_at: string;
+}
+
+export interface AssignmentSubmissionsResult {
+  assignment: Assignment;
+  total_enrolled: number;
+  submitted_count: number;
+  average_score: number;
+  submissions: AssignmentSubmission[];
+  pending_students: { id: string | number; name: string; email: string }[];
+}
+
 export interface AttendanceRecord {
   id?: string | number;
   student_id: string | number;
@@ -97,6 +234,65 @@ export interface SubmitAttendanceInput {
     student_id: string | number;
     status: string;
   }[];
+}
+
+export interface AttendanceAnalyticsOverall {
+  totalRecords: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  excusedCount: number;
+  attendancePercentage: number;
+}
+
+export interface DailyTrendItem {
+  date: string;
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  percentage: number;
+}
+
+export interface MonthlyTrendItem {
+  month: string;
+  label: string;
+  total: number;
+  present: number;
+  absent: number;
+  percentage: number;
+}
+
+export interface BatchBreakdownItem {
+  batch_id: string | number;
+  name: string;
+  course: string;
+  totalRecords: number;
+  presentCount: number;
+  absentCount: number;
+  percentage: number;
+}
+
+export interface AttendanceAnalyticsSummary {
+  overall: AttendanceAnalyticsOverall;
+  dailyTrend: DailyTrendItem[];
+  monthlyTrend: MonthlyTrendItem[];
+  batchBreakdown: BatchBreakdownItem[];
+}
+
+export interface StudentAttendanceReportItem {
+  student_id: string | number;
+  student_name: string;
+  student_email: string;
+  batch_id?: string | number | null;
+  batch_name: string;
+  total_days: number;
+  present_days: number;
+  absent_days: number;
+  late_days: number;
+  attendance_percentage: number;
+  status_badge: string;
 }
 
 async function request<T>(
@@ -295,6 +491,105 @@ export const api = {
       );
       return res.data ?? [];
     },
+    getAnalyticsSummary: async (
+      query?: {
+        batch_id?: string;
+        start_date?: string;
+        end_date?: string;
+        teacher_email?: string;
+        role?: string;
+      },
+      headers?: Record<string, string>
+    ) => {
+      const params = new URLSearchParams();
+      if (query?.batch_id) params.set("batch_id", query.batch_id);
+      if (query?.start_date) params.set("start_date", query.start_date);
+      if (query?.end_date) params.set("end_date", query.end_date);
+      if (query?.teacher_email) params.set("teacher_email", query.teacher_email);
+      if (query?.role) params.set("role", query.role);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await request<AttendanceAnalyticsSummary>(
+        `/attendance/analytics/summary${qs}`,
+        { headers }
+      );
+      const raw = res as unknown as {
+        data?: AttendanceAnalyticsSummary;
+        overall?: AttendanceAnalyticsOverall;
+        dailyTrend?: DailyTrendItem[];
+        monthlyTrend?: MonthlyTrendItem[];
+        batchBreakdown?: BatchBreakdownItem[];
+      };
+      if (raw.data?.overall) {
+        return raw.data;
+      }
+      if (raw.overall) {
+        return {
+          overall: raw.overall,
+          dailyTrend: raw.dailyTrend ?? [],
+          monthlyTrend: raw.monthlyTrend ?? [],
+          batchBreakdown: raw.batchBreakdown ?? [],
+        };
+      }
+      return {
+        overall: {
+          totalRecords: 0,
+          presentCount: 0,
+          absentCount: 0,
+          lateCount: 0,
+          excusedCount: 0,
+          attendancePercentage: 0,
+        },
+        dailyTrend: [],
+        monthlyTrend: [],
+        batchBreakdown: [],
+      };
+    },
+    getStudentReport: async (
+      query?: {
+        batch_id?: string;
+        start_date?: string;
+        end_date?: string;
+        search?: string;
+        teacher_email?: string;
+        role?: string;
+      },
+      headers?: Record<string, string>
+    ) => {
+      const params = new URLSearchParams();
+      if (query?.batch_id) params.set("batch_id", query.batch_id);
+      if (query?.start_date) params.set("start_date", query.start_date);
+      if (query?.end_date) params.set("end_date", query.end_date);
+      if (query?.search) params.set("search", query.search);
+      if (query?.teacher_email) params.set("teacher_email", query.teacher_email);
+      if (query?.role) params.set("role", query.role);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await request<StudentAttendanceReportItem[]>(
+        `/attendance/analytics/student-report${qs}`,
+        { headers }
+      );
+      return res.data ?? [];
+    },
+    exportCsvUrl: (query?: {
+      batch_id?: string;
+      start_date?: string;
+      end_date?: string;
+      type?: string;
+      teacher_email?: string;
+      role?: string;
+    }) => {
+      const params = new URLSearchParams();
+      if (query?.batch_id) params.set("batch_id", query.batch_id);
+      if (query?.start_date) params.set("start_date", query.start_date);
+      if (query?.end_date) params.set("end_date", query.end_date);
+      if (query?.type) params.set("type", query.type);
+      if (query?.teacher_email) params.set("teacher_email", query.teacher_email);
+      if (query?.role) params.set("role", query.role);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      return `${API_BASE_URL}/attendance/analytics/export${qs}`;
+    },
   },
 
   teachers: {
@@ -336,6 +631,129 @@ export const api = {
     myBatches: async () => {
       const res = await request<Batch[]>("/teacher/me/batches");
       return res.data ?? [];
+    },
+  },
+
+  classes: {
+    list: async (
+      query?: {
+        batch_id?: string;
+        start_date?: string;
+        end_date?: string;
+        status?: string;
+        search?: string;
+        teacher_email?: string;
+        student_id?: string;
+      },
+      headers?: Record<string, string>
+    ) => {
+      const params = new URLSearchParams();
+      if (query?.batch_id) params.set("batch_id", query.batch_id);
+      if (query?.start_date) params.set("start_date", query.start_date);
+      if (query?.end_date) params.set("end_date", query.end_date);
+      if (query?.status) params.set("status", query.status);
+      if (query?.search) params.set("search", query.search);
+      if (query?.teacher_email) params.set("teacher_email", query.teacher_email);
+      if (query?.student_id) params.set("student_id", query.student_id);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await request<ClassItem[]>(`/classes${qs}`, { headers });
+      return res.data ?? [];
+    },
+    upcoming: async (limit = 5, headers?: Record<string, string>) => {
+      const res = await request<ClassItem[]>(`/classes/upcoming?limit=${limit}`, {
+        headers,
+      });
+      return res.data ?? [];
+    },
+    get: async (id: string) => {
+      const res = await request<ClassItem>(`/classes/${id}`);
+      return res.data;
+    },
+    create: async (data: CreateClassInput, headers?: Record<string, string>) => {
+      const res = await request<ClassItem>("/classes", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers,
+      });
+      return res.data;
+    },
+    reschedule: async (
+      id: string,
+      data: RescheduleClassInput,
+      headers?: Record<string, string>
+    ) => {
+      const res = await request<ClassItem>(`/classes/${id}/reschedule`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+        headers,
+      });
+      return res.data;
+    },
+    update: async (
+      id: string,
+      data: UpdateClassInput,
+      headers?: Record<string, string>
+    ) => {
+      const res = await request<ClassItem>(`/classes/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+        headers,
+      });
+      return res.data;
+    },
+    delete: async (id: string, headers?: Record<string, string>) => {
+      const res = await request<ClassItem>(`/classes/${id}`, {
+        method: "DELETE",
+        headers,
+      });
+      return res.data;
+    },
+  },
+  assignments: {
+    list: async (
+      query?: { batch_id?: string; class_id?: string; teacher_email?: string },
+      headers?: Record<string, string>
+    ) => {
+      const params = new URLSearchParams();
+      if (query?.batch_id) params.set("batch_id", query.batch_id);
+      if (query?.class_id) params.set("class_id", query.class_id);
+      if (query?.teacher_email) params.set("teacher_email", query.teacher_email);
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await request<Assignment[]>(`/assignments${qs}`, { headers });
+      return res.data ?? [];
+    },
+    get: async (id: string, headers?: Record<string, string>) => {
+      const res = await request<Assignment>(`/assignments/${id}`, { headers });
+      return res.data;
+    },
+    create: async (data: CreateAssignmentInput, headers?: Record<string, string>) => {
+      const res = await request<Assignment>("/assignments", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers,
+      });
+      return res.data;
+    },
+    submit: async (id: string, data: SubmitAssignmentInput) => {
+      const res = await request<AssignmentSubmission>(`/assignments/${id}/submit`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      return res;
+    },
+    getSubmissions: async (id: string, headers?: Record<string, string>) => {
+      const res = await request<AssignmentSubmissionsResult>(`/assignments/${id}/submissions`, {
+        headers,
+      });
+      return res.data;
+    },
+    delete: async (id: string, headers?: Record<string, string>) => {
+      const res = await request<{ success: boolean; message: string }>(`/assignments/${id}`, {
+        method: "DELETE",
+        headers,
+      });
+      return res.data;
     },
   },
 };

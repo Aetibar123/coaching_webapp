@@ -187,49 +187,103 @@ export function BatchesClient({
     (s) => !batchStudents.some((bs) => bs.id === s.id)
   );
 
+  const totalCapacity = batches.reduce((sum, b) => sum + (Number(b.capacity) || 0), 0);
+  const activeBatchesCount = batches.filter((b) => b.status === "active").length;
+
   return (
     <div className="space-y-6">
-      {/* Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            Batches & Courses
-          </h2>
-          <p className="text-sm text-slate-500">
-            Manage course schedules, student capacities, and active cohorts.
+      {/* Hero Banner (Home Page Signature Dark Bento) */}
+      <div className="rounded-3xl bg-slate-950 p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800/80">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.3),rgba(255,255,255,0))]" />
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="space-y-2.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-3.5 py-1 text-xs font-mono font-medium text-slate-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <span>[ 01 ARCHITECTURE // COHORTS ]</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-400 font-normal">Capacity Guard Engine</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              Course Cohorts &{" "}
+              <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-white bg-clip-text text-transparent">
+                Batch Registry
+              </span>
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xl font-normal leading-relaxed">
+              {isAdmin
+                ? "Physical classrooms have hard seating limits. CoachingHub enforces batch capacity at the service layer, preventing accidental over-enrollment."
+                : "You are viewing your assigned teaching batches. Review student enrollments and manage class schedules."}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {isAdmin && (
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-950 shadow-md hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                <span>+</span> New Batch
+              </button>
+            )}
+
+            <Link
+              href="/classes"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-all"
+            >
+              <span>🗓️</span> Class Schedule
+            </Link>
+
+            <Link
+              href="/attendance"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-all"
+            >
+              <span>📅</span> Attendance
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Metrics Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 font-mono">
+            {batches.length}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Total Cohorts
           </p>
         </div>
 
-        {isAdmin && (
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-all cursor-pointer"
-          >
-            <span>+</span> New Batch
-          </button>
-        )}
-      </div>
-
-      {!isAdmin && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-sm shadow-xs">
-              👨‍🏫
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-blue-900">
-                Teacher Assigned Cohorts
-              </p>
-              <p className="text-[11px] text-blue-700">
-                You are viewing only the batches and enrolled students assigned to your faculty profile.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
-            {batches.length} Assigned Batch{batches.length === 1 ? "" : "es"}
-          </span>
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600 font-mono">
+            {activeBatchesCount}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Active Batches
+          </p>
         </div>
-      )}
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-blue-600 font-mono">
+            {totalCapacity}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Total Seats
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 shadow-xs text-center">
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-purple-600 font-mono">
+            {allStudents.length}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+            Enrolled Students
+          </p>
+        </div>
+      </div>
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3.5 rounded-2xl border border-slate-200">

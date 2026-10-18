@@ -5,7 +5,7 @@ export interface AppUser {
   email?: string;
   fullName: string;
   avatarUrl?: string;
-  role: "admin" | "teacher";
+  role: "admin" | "teacher" | "student";
 }
 
 export async function getCurrentUser(): Promise<AppUser | null> {
@@ -16,7 +16,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
 
   if (!user) return null;
 
-  let role: "admin" | "teacher" = "teacher";
+  let role: "admin" | "teacher" | "student" = "teacher";
 
   try {
     const adminEmails = (process.env.ADMIN_EMAILS || "")
@@ -34,13 +34,11 @@ export async function getCurrentUser(): Promise<AppUser | null> {
         .maybeSingle();
 
       if (profile?.role) {
-        role =
-          profile.role.toLowerCase() === "admin" ? "admin" : "teacher";
+        const r = profile.role.toLowerCase();
+        role = r === "admin" ? "admin" : r === "student" ? "student" : "teacher";
       } else if (user.user_metadata?.role) {
-        role =
-          String(user.user_metadata.role).toLowerCase() === "admin"
-            ? "admin"
-            : "teacher";
+        const r = String(user.user_metadata.role).toLowerCase();
+        role = r === "admin" ? "admin" : r === "student" ? "student" : "teacher";
       }
     }
   } catch {
@@ -52,10 +50,8 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     if (user.email && adminEmails.includes(user.email.toLowerCase())) {
       role = "admin";
     } else if (user.user_metadata?.role) {
-      role =
-        String(user.user_metadata.role).toLowerCase() === "admin"
-          ? "admin"
-          : "teacher";
+      const r = String(user.user_metadata.role).toLowerCase();
+      role = r === "admin" ? "admin" : r === "student" ? "student" : "teacher";
     }
   }
 

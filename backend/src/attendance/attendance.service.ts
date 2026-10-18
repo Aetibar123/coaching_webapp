@@ -6,7 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { SubmitAttendanceDto, QueryAttendanceDto } from './attendance.dto';
+import {
+  SubmitAttendanceDto,
+  QueryAttendanceDto,
+  AttendanceAnalyticsQueryDto,
+} from './attendance.dto';
 
 interface StudentRecord {
   id: string | number;
@@ -294,5 +298,665 @@ export class AttendanceService {
         'Something went wrong while retrieving batch attendance',
       );
     }
+  }
+
+  /**
+   * Helper to retrieve batches assigned to a teacher
+  /**
+   * Helper to retrieve batches assigned to a teacher
+   */
+  private async getTeacherBatchIds(
+    email?: string,
+  ): Promise<(string | number)[]> {
+    if (!email) return [];
+    const supabase = this.supabaseService.getClient();
+
+    try {
+      const teacherRes = (await supabase
+        .from('teachers')
+        .select('id, name')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle()) as {
+        data: { id: string; name: string } | null;
+        error: { message: string } | null;
+      };
+
+      if (!teacherRes.data) return [];
+
+      const teacher = teacherRes.data;
+      const batchIdSet = new Set<string | number>();
+
+      // 1. Try finding batches assigned via teacher_id
+      try {
+        const byIdRes = (await supabase
+          .from('batch')
+          .select('id')
+          .eq('teacher_id', teacher.id)) as {
+          data: { id: string | number }[] | null;
+        };
+        (byIdRes.data ?? []).forEach((b) => batchIdSet.add(b.id));
+      } catch {
+        // Column teacher_id might not exist yet
+      }
+
+      // 2. Also match by instructor name
+      if (teacher.name) {
+        try {
+          const byNameRes = (await supabase
+            .from('batch')
+            .select('id')
+            .ilike('instructor', `%${teacher.name}%`)) as {
+            data: { id: string | number }[] | null;
+          };
+          (byNameRes.data ?? []).forEach((b) => batchIdSet.add(b.id));
+        } catch {
+          // Ignore
+        }
+      }
+
+      return Array.from(batchIdSet);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Retrieve aggregate attendance analytics:
+   * Overall metrics, daily trend, monthly trend, and batch breakdown
+   */
+  async getAttendanceAnalytics(
+    query?: AttendanceAnalyticsQueryDto,
+    userContext?: { role?: string; email?: string },
+  ) {
+    const supabase = this.supabaseService.getClient();
+
+    try {
+      const normalizedRole = userContext?.role?.toLowerCase();
+      const userEmail = (userContext?.email || query?.teacher_email || query?.email)?.toLowerCase().trim();
+      let isTeacher = normalizedRole === 'teacher';
+
+      // Auto-detect teacher if role wasn't explicitly passed
+      if (!isTeacher && normalizedRole !== 'admin' && userEmail) {
+        try {
+          const tRes = (await supabase
+            .from('teachers')
+            .select('id')
+            .eq('email', userEmail)
+            .maybeSingle()) as { data: { id: string } | null };
+          if (tRes.data) {
+            isTeacher = true;
+          }
+        } catch {
+          // Ignore
+        }
+      }
+
+      let allowedBatchIds: (string | number)[] | null = null;
+
+      if (isTeacher) {
+        allowedBatchIds = await this.getTeacherBatchIds(userEmail);
+        if (allowedBatchIds.length === 0) {
+          const emptySummary = {
+            totalRecords: 0,
+            presentCount: 0,
+            absentCount: 0,
+            lateCount: 0,
+            excusedCount: 0,
+            attendancePercentage: 0,
+          };
+          return {
+            success: true,
+            data: {
+              overall: emptySummary,
+              dailyTrend: [],
+              monthlyTrend: [],
+              batchBreakdown: [],
+            },
+            overall: emptySummary,
+            dailyTrend: [],
+            monthlyTrend: [],
+            batchBreakdown: [],
+          };
+        }
+      }
+
+      // Query batches metadata for display names
+      const batchesRes = (await supabase
+        .from('batch')
+        .select('id, name, course')) as {
+        data: { id: string | number; name: string; course: string }[] | null;
+        error: { message: string } | null;
+      };
+
+      const batchesMap = new Map<
+        string,
+        { id: string | number; name: string; course: string }
+      >();
+      (batchesRes.data ?? []).forEach((b) => {
+        batchesMap.set(String(b.id), b);
+      });
+
+      // Build attendance query
+      let req = supabase.from('attendance').select('*');
+
+      if (query?.batch_id) {
+        req = req.eq('batch_id', query.batch_id);
+      } else if (allowedBatchIds !== null) {
+        req = req.in('batch_id', allowedBatchIds);
+      }
+
+      if (query?.start_date) {
+        const startDateStr = query.start_date.split('T')[0];
+        req = req.gte('date', startDateStr);
+      }
+      if (query?.end_date) {
+        const endDateStr = query.end_date.length === 10
+          ? `${query.end_date} 23:59:59`
+          : query.end_date;
+        req = req.lte('date', endDateStr);
+      }
+
+      req = req.order('date', { ascending: true });
+
+      const { data, error } = await req;
+      if (error) {
+        throw new BadRequestException(`Supabase Error: ${error.message}`);
+      }
+
+      interface AttItem {
+        id: string | number;
+        batch_id: string | number;
+        student_id: string | number;
+        date: string;
+        status: string;
+      }
+
+      const records = (data as AttItem[]) ?? [];
+
+      let presentCount = 0;
+      let absentCount = 0;
+      let lateCount = 0;
+      let excusedCount = 0;
+
+      const dailyMap = new Map<
+        string,
+        {
+          date: string;
+          total: number;
+          present: number;
+          absent: number;
+          late: number;
+          excused: number;
+        }
+      >();
+      const monthlyMap = new Map<
+        string,
+        {
+          month: string;
+          label: string;
+          total: number;
+          present: number;
+          absent: number;
+        }
+      >();
+      const batchStatsMap = new Map<
+        string,
+        {
+          batch_id: string | number;
+          name: string;
+          course: string;
+          totalRecords: number;
+          presentCount: number;
+          absentCount: number;
+        }
+      >();
+
+      for (const r of records) {
+        const status = r.status.toLowerCase().trim();
+        if (status === 'present') presentCount++;
+        else if (status === 'absent') absentCount++;
+        else if (status === 'late') lateCount++;
+        else if (status === 'excused') excusedCount++;
+
+        // Daily trend grouping (normalize to YYYY-MM-DD)
+        const dateKey = (r.date || '').split('T')[0].split(' ')[0];
+        const currentDaily = dailyMap.get(dateKey) || {
+          date: dateKey,
+          total: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+        };
+        currentDaily.total++;
+        if (status === 'present') currentDaily.present++;
+        else if (status === 'absent') currentDaily.absent++;
+        else if (status === 'late') currentDaily.late++;
+        else if (status === 'excused') currentDaily.excused++;
+        dailyMap.set(dateKey, currentDaily);
+
+        // Monthly trend grouping (YYYY-MM)
+        const monthKey = dateKey.substring(0, 7);
+        const currentMonthly = monthlyMap.get(monthKey) || {
+          month: monthKey,
+          label: this.formatMonthLabel(monthKey),
+          total: 0,
+          present: 0,
+          absent: 0,
+        };
+        currentMonthly.total++;
+        if (status === 'present' || status === 'late') currentMonthly.present++;
+        else if (status === 'absent') currentMonthly.absent++;
+        monthlyMap.set(monthKey, currentMonthly);
+
+        // Batch breakdown grouping
+        const bKey = String(r.batch_id);
+        const bMeta = batchesMap.get(bKey);
+        const currentBatch = batchStatsMap.get(bKey) || {
+          batch_id: r.batch_id,
+          name: bMeta?.name ?? `Batch #${r.batch_id}`,
+          course: bMeta?.course ?? 'General',
+          totalRecords: 0,
+          presentCount: 0,
+          absentCount: 0,
+        };
+        currentBatch.totalRecords++;
+        if (status === 'present' || status === 'late')
+          currentBatch.presentCount++;
+        else if (status === 'absent') currentBatch.absentCount++;
+        batchStatsMap.set(bKey, currentBatch);
+      }
+
+      const totalRecords = records.length;
+      const attendancePercentage =
+        totalRecords > 0
+          ? Number(
+              (((presentCount + lateCount) / totalRecords) * 100).toFixed(1),
+            )
+          : 0;
+
+      const dailyTrend = Array.from(dailyMap.values())
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((d) => ({
+          ...d,
+          percentage:
+            d.total > 0
+              ? Number((((d.present + d.late) / d.total) * 100).toFixed(1))
+              : 0,
+        }));
+
+      const monthlyTrend = Array.from(monthlyMap.values())
+        .sort((a, b) => a.month.localeCompare(b.month))
+        .map((m) => ({
+          ...m,
+          percentage:
+            m.total > 0 ? Number(((m.present / m.total) * 100).toFixed(1)) : 0,
+        }));
+
+      const batchBreakdown = Array.from(batchStatsMap.values()).map((b) => ({
+        ...b,
+        percentage:
+          b.totalRecords > 0
+            ? Number(((b.presentCount / b.totalRecords) * 100).toFixed(1))
+            : 0,
+      }));
+
+      const summaryPayload = {
+        overall: {
+          totalRecords,
+          presentCount,
+          absentCount,
+          lateCount,
+          excusedCount,
+          attendancePercentage,
+        },
+        dailyTrend,
+        monthlyTrend,
+        batchBreakdown,
+      };
+
+      return {
+        success: true,
+        data: summaryPayload,
+        ...summaryPayload,
+      };
+    } catch (error) {
+      this.logger.error('Attendance Analytics Error:', error);
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        'Failed to generate attendance analytics',
+      );
+    }
+  }
+
+  /**
+   * Helper to format YYYY-MM into friendly label
+   */
+  private formatMonthLabel(yyyyMm: string): string {
+    try {
+      const parts = yyyyMm.split('-');
+      const year = Number(parts[0]);
+      const month = Number(parts[1]);
+      const d = new Date(year, month - 1, 1);
+      return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    } catch {
+      return yyyyMm;
+    }
+  }
+
+  /**
+   * Retrieve student-wise attendance records with metrics and status ratings
+   */
+  async getStudentAttendanceReport(
+    query?: AttendanceAnalyticsQueryDto,
+    userContext?: { role?: string; email?: string },
+  ) {
+    const supabase = this.supabaseService.getClient();
+
+    try {
+      const normalizedRole = userContext?.role?.toLowerCase();
+      const userEmail = (userContext?.email || query?.teacher_email || query?.email)?.toLowerCase().trim();
+      let isTeacher = normalizedRole === 'teacher';
+
+      // Auto-detect teacher if role wasn't explicitly passed
+      if (!isTeacher && normalizedRole !== 'admin' && userEmail) {
+        try {
+          const tRes = (await supabase
+            .from('teachers')
+            .select('id')
+            .eq('email', userEmail)
+            .maybeSingle()) as { data: { id: string } | null };
+          if (tRes.data) {
+            isTeacher = true;
+          }
+        } catch {
+          // Ignore
+        }
+      }
+
+      let allowedBatchIds: (string | number)[] | null = null;
+
+      if (isTeacher) {
+        allowedBatchIds = await this.getTeacherBatchIds(userEmail);
+        if (allowedBatchIds.length === 0) {
+          return { success: true, count: 0, data: [] };
+        }
+      }
+
+      // Query students
+      let studentReq = supabase
+        .from('student')
+        .select('id, name, email, batch_id');
+      if (query?.batch_id) {
+        studentReq = studentReq.eq('batch_id', query.batch_id);
+      } else if (allowedBatchIds !== null) {
+        studentReq = studentReq.in('batch_id', allowedBatchIds);
+      }
+
+      const studentsRes = (await studentReq) as {
+        data:
+          | {
+              id: string | number;
+              name: string;
+              email: string;
+              batch_id?: string | number;
+            }[]
+          | null;
+        error: { message: string } | null;
+      };
+
+      if (studentsRes.error) {
+        throw new BadRequestException(
+          `Supabase Error: ${studentsRes.error.message}`,
+        );
+      }
+
+      const allStudents = studentsRes.data ?? [];
+
+      // Query batches map for display names
+      const batchesRes = (await supabase
+        .from('batch')
+        .select('id, name, course')) as {
+        data: { id: string | number; name: string; course: string }[] | null;
+        error: { message: string } | null;
+      };
+      const batchesMap = new Map<string, string>();
+      (batchesRes.data ?? []).forEach((b) => {
+        batchesMap.set(String(b.id), b.name);
+      });
+
+      // Query attendance within date range
+      let attReq = supabase
+        .from('attendance')
+        .select('student_id, batch_id, date, status');
+      if (query?.batch_id) {
+        attReq = attReq.eq('batch_id', query.batch_id);
+      } else if (allowedBatchIds !== null) {
+        attReq = attReq.in('batch_id', allowedBatchIds);
+      }
+      if (query?.start_date) {
+        const startDateStr = query.start_date.split('T')[0];
+        attReq = attReq.gte('date', startDateStr);
+      }
+      if (query?.end_date) {
+        const endDateStr = query.end_date.length === 10
+          ? `${query.end_date} 23:59:59`
+          : query.end_date;
+        attReq = attReq.lte('date', endDateStr);
+      }
+
+      const attRes = (await attReq) as {
+        data:
+          | {
+              student_id: string | number;
+              batch_id: string | number;
+              date: string;
+              status: string;
+            }[]
+          | null;
+        error: { message: string } | null;
+      };
+
+      if (attRes.error) {
+        throw new BadRequestException(
+          `Supabase Error: ${attRes.error.message}`,
+        );
+      }
+
+      const attendanceRecords = attRes.data ?? [];
+
+      // Group attendance counts by student_id
+      const studentAttMap = new Map<
+        string,
+        {
+          total: number;
+          present: number;
+          absent: number;
+          late: number;
+          excused: number;
+        }
+      >();
+      for (const rec of attendanceRecords) {
+        const sKey = String(rec.student_id);
+        const curr = studentAttMap.get(sKey) || {
+          total: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+        };
+        curr.total++;
+        const st = rec.status.toLowerCase().trim();
+        if (st === 'present') curr.present++;
+        else if (st === 'absent') curr.absent++;
+        else if (st === 'late') curr.late++;
+        else if (st === 'excused') curr.excused++;
+        studentAttMap.set(sKey, curr);
+      }
+
+      let reports = allStudents.map((s) => {
+        const att = studentAttMap.get(String(s.id)) || {
+          total: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+        };
+        const total = att.total;
+        const attended = att.present + att.late;
+        const percentage =
+          total > 0 ? Number(((attended / total) * 100).toFixed(1)) : 0;
+
+        let statusBadge = 'No Data';
+        if (total === 0) {
+          statusBadge = 'No Data';
+        } else if (percentage >= 90) {
+          statusBadge = 'Excellent';
+        } else if (percentage >= 75) {
+          statusBadge = 'Good';
+        } else if (percentage >= 50) {
+          statusBadge = 'Average';
+        } else {
+          statusBadge = 'At Risk';
+        }
+
+        return {
+          student_id: s.id,
+          student_name: s.name,
+          student_email: s.email,
+          batch_id: s.batch_id ?? null,
+          batch_name: s.batch_id
+            ? (batchesMap.get(String(s.batch_id)) ?? `Batch #${s.batch_id}`)
+            : 'Unassigned',
+          total_days: total,
+          present_days: att.present,
+          absent_days: att.absent,
+          late_days: att.late,
+          attendance_percentage: percentage,
+          status_badge: statusBadge,
+        };
+      });
+
+      // Filter by search query if present
+      if (query?.search) {
+        const q = query.search.toLowerCase().trim();
+        reports = reports.filter(
+          (r) =>
+            r.student_name.toLowerCase().includes(q) ||
+            r.student_email.toLowerCase().includes(q) ||
+            r.batch_name.toLowerCase().includes(q),
+        );
+      }
+
+      // Sort by attendance percentage descending
+      reports.sort((a, b) => b.attendance_percentage - a.attendance_percentage);
+
+      return {
+        success: true,
+        count: reports.length,
+        data: reports,
+      };
+    } catch (error) {
+      this.logger.error('Student Attendance Report Error:', error);
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        'Failed to generate student attendance report',
+      );
+    }
+  }
+
+  /**
+   * Export attendance reports as CSV formatted string
+   */
+  async exportAttendanceCsv(
+    query?: AttendanceAnalyticsQueryDto,
+    userContext?: { role?: string; email?: string },
+  ): Promise<{ filename: string; csv: string }> {
+    const type = query?.type || 'students';
+    const timestamp = new Date().toISOString().split('T')[0];
+
+    if (type === 'daily') {
+      const analytics = await this.getAttendanceAnalytics(query, userContext);
+      const headers = [
+        'Date',
+        'Total Marked',
+        'Present',
+        'Absent',
+        'Late',
+        'Excused',
+        'Attendance Rate (%)',
+      ];
+      const rows = analytics.dailyTrend.map((d) => [
+        `"${d.date}"`,
+        d.total,
+        d.present,
+        d.absent,
+        d.late,
+        d.excused,
+        `${d.percentage}%`,
+      ]);
+      const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join(
+        '\n',
+      );
+      return { filename: `attendance-daily-trend-${timestamp}.csv`, csv };
+    }
+
+    if (type === 'batches') {
+      const analytics = await this.getAttendanceAnalytics(query, userContext);
+      const headers = [
+        'Batch ID',
+        'Batch Name',
+        'Course',
+        'Total Marked',
+        'Present',
+        'Absent',
+        'Attendance Rate (%)',
+      ];
+      const rows = analytics.batchBreakdown.map((b) => [
+        `"${b.batch_id}"`,
+        `"${b.name.replace(/"/g, '""')}"`,
+        `"${b.course.replace(/"/g, '""')}"`,
+        b.totalRecords,
+        b.presentCount,
+        b.absentCount,
+        `${b.percentage}%`,
+      ]);
+      const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join(
+        '\n',
+      );
+      return { filename: `attendance-batch-report-${timestamp}.csv`, csv };
+    }
+
+    // Default: Student-wise report
+    const studentReport = await this.getStudentAttendanceReport(
+      query,
+      userContext,
+    );
+    const headers = [
+      'Student ID',
+      'Student Name',
+      'Email',
+      'Batch',
+      'Total Sessions',
+      'Present Days',
+      'Absent Days',
+      'Late Days',
+      'Attendance Rate (%)',
+      'Status',
+    ];
+    const rows = studentReport.data.map((s) => [
+      `"${s.student_id}"`,
+      `"${s.student_name.replace(/"/g, '""')}"`,
+      `"${s.student_email.replace(/"/g, '""')}"`,
+      `"${s.batch_name.replace(/"/g, '""')}"`,
+      s.total_days,
+      s.present_days,
+      s.absent_days,
+      s.late_days,
+      `${s.attendance_percentage}%`,
+      `"${s.status_badge}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    return { filename: `attendance-student-report-${timestamp}.csv`, csv };
   }
 }
