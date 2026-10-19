@@ -38,9 +38,6 @@ export function PublicNavbar({ user }: PublicNavbarProps) {
           <div>
             <span className="text-base font-extrabold tracking-tight text-slate-950 flex items-center gap-1.5">
               CoachingHub
-              <span className="rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.2 text-[10px] font-mono font-semibold text-slate-600">
-                v2.4
-              </span>
             </span>
           </div>
         </Link>
@@ -51,25 +48,7 @@ export function PublicNavbar({ user }: PublicNavbarProps) {
             href="/#features"
             className="hover:text-slate-950 transition-colors"
           >
-            Capabilities
-          </Link>
-          <Link
-            href="/#bento"
-            className="hover:text-slate-950 transition-colors"
-          >
-            Architecture
-          </Link>
-          <Link
-            href="/#comparison"
-            className="hover:text-slate-950 transition-colors"
-          >
-            Why CoachingHub
-          </Link>
-          <Link
-            href="/#faq"
-            className="hover:text-slate-950 transition-colors"
-          >
-            FAQ
+            Features
           </Link>
           <Link
             href="/batches"
@@ -82,6 +61,24 @@ export function PublicNavbar({ user }: PublicNavbarProps) {
             className="hover:text-slate-950 transition-colors"
           >
             Attendance
+          </Link>
+          <Link
+            href="/assignments"
+            className="hover:text-slate-950 transition-colors"
+          >
+            Assignments
+          </Link>
+          <Link
+            href="/#comparison"
+            className="hover:text-slate-950 transition-colors"
+          >
+            Why CoachingHub
+          </Link>
+          <Link
+            href="/#faq"
+            className="hover:text-slate-950 transition-colors"
+          >
+            FAQ
           </Link>
         </nav>
 
@@ -171,14 +168,35 @@ export function PublicNavbar({ user }: PublicNavbarProps) {
             onClick={() => setMobileMenuOpen(false)}
             className="block font-semibold text-slate-700 hover:text-blue-600"
           >
-            Capabilities
+            Features
           </Link>
           <Link
-            href="/#bento"
+            href="/batches"
             onClick={() => setMobileMenuOpen(false)}
             className="block font-semibold text-slate-700 hover:text-blue-600"
           >
-            Architecture
+            Batches
+          </Link>
+          <Link
+            href="/attendance"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block font-semibold text-slate-700 hover:text-blue-600"
+          >
+            Attendance
+          </Link>
+          <Link
+            href="/assignments"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block font-semibold text-slate-700 hover:text-blue-600"
+          >
+            Assignments
+          </Link>
+          <Link
+            href="/students"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block font-semibold text-slate-700 hover:text-blue-600"
+          >
+            Students
           </Link>
           <Link
             href="/#comparison"
@@ -194,27 +212,6 @@ export function PublicNavbar({ user }: PublicNavbarProps) {
           >
             FAQ
           </Link>
-          <Link
-            href="/batches"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block font-semibold text-slate-700 hover:text-blue-600"
-          >
-            Batches
-          </Link>
-          <Link
-            href="/students"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block font-semibold text-slate-700 hover:text-blue-600"
-          >
-            Students
-          </Link>
-          <Link
-            href="/attendance"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block font-semibold text-slate-700 hover:text-blue-600"
-          >
-            Attendance
-          </Link>
 
           <div className="pt-3 border-t border-slate-100">
             {user ? (
@@ -224,7 +221,7 @@ export function PublicNavbar({ user }: PublicNavbarProps) {
                   onClick={() => setMobileMenuOpen(false)}
                   className="block w-full text-center rounded-xl bg-slate-950 py-2.5 text-xs font-bold text-white"
                 >
-                  Open Console →
+                  Open Dashboard →
                 </Link>
                 <form action="/auth/signout" method="post">
                   <button

@@ -9,29 +9,34 @@ interface FaqItem {
 
 const faqs: FaqItem[] = [
   {
-    question: "How does the batch capacity enforcement work?",
+    question: "How does batch capacity management work?",
     answer:
-      "When creating a batch, administrators define a maximum seat capacity (e.g., 30 students). Whenever a student is assigned to that batch, the backend automatically calculates the active enrollment count. If the batch has reached its limit, the system rejects additional enrollments with a clear capacity alert, preventing physical classroom overcrowding.",
+      "When creating a batch, you can specify the maximum seat limit (e.g., 30 students). CoachingHub tracks how many students are enrolled and warns you before you exceed physical classroom space.",
   },
   {
-    question: "How does bulk attendance insertion work with Supabase?",
+    question: "How long does it take to mark daily attendance?",
     answer:
-      "Teachers mark all students on a single screen using quick actions like 'All Present' or individual toggles. The client validates the payload and dispatches a single request. The backend transforms the roster using .map() and executes a bulk PostgreSQL INSERT query into the attendance table, checking for duplicate IDs and recording the session in under 50 milliseconds.",
+      "Just a few seconds. Select your batch, click 'All Present', toggle any students who are absent or late, and save. It works smoothly right from your phone or laptop during class.",
   },
   {
-    question: "Can multiple students be enrolled or transferred between batches?",
+    question: "Can teachers and students have separate accounts?",
     answer:
-      "Yes. Students can be reassigned to different batches at any time. When a student is transferred, their past attendance records for previous batches remain intact in the database for historical audits.",
+      "Yes. Institute administrators have full access to manage batches and review teachers. Teachers can view their assigned batches, schedule lectures, mark attendance, and create MCQ assignments. Students can log in to view their schedule, check attendance, and take quizzes.",
   },
   {
-    question: "Is Google OAuth required for faculty and admin access?",
+    question: "Can teachers create MCQ quizzes and assignments?",
     answer:
-      "Google OAuth 2.0 provides frictionless, enterprise-grade sign-in without requiring passwords. Instructors and institute staff authenticate directly using their official Google accounts. In addition, Supabase Row Level Security (RLS) and session tokens protect all backend API routes.",
+      "Yes. Teachers can create multiple-choice question (MCQ) quizzes with custom options and correct answers. Students attempt them from their dashboard, and scores are recorded immediately without manual grading.",
   },
   {
-    question: "Can attendance be exported or queried for custom dates?",
+    question: "Can I review past attendance history?",
     answer:
-      "Yes. The backend provides filtered query endpoints allowing administrators to retrieve attendance records by batch, by date, or by individual student ID across any timeframe.",
+      "Yes. You can filter and view attendance records by batch and date at any time, making it easy to see student consistency and share updates with parents.",
+  },
+  {
+    question: "Do I need to install any software?",
+    answer:
+      "No installation is required. CoachingHub works directly in your web browser across mobile phones, tablets, and computers. Simply sign in with Google to get started.",
   },
 ];
 

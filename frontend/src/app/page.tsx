@@ -31,35 +31,33 @@ export default async function HomePage() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-16 pb-20 md:pt-24 md:pb-28">
-        {/* Subtle engineering background grid */}
+        {/* Subtle background grid */}
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-40" />
 
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center max-w-3xl mx-auto space-y-6">
             {/* Version Announcement Tag */}
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white px-3.5 py-1 text-xs font-semibold text-slate-700 shadow-xs">
-              <span className="flex h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
-              <span>v2.4 Released</span>
+              <span className="flex h-1.5 w-1.5 rounded-full bg-blue-600" />
+              <span>Coaching Center Management</span>
               <span className="text-slate-300">|</span>
               <span className="text-slate-500 font-normal">
-                Batch Capacity Guard & Supabase Bulk Sync
+                Batches, Attendance & MCQ Quizzes
               </span>
-              <span className="text-slate-400">→</span>
             </div>
 
             {/* Authoritative Headline */}
             <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-slate-950 leading-[1.08]">
-              The operating system for high-performance{" "}
+              Run your coaching classes with{" "}
               <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-slate-950 bg-clip-text text-transparent">
-                coaching academies.
+                clarity and zero chaos.
               </span>
             </h1>
 
             {/* Subhead */}
             <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto font-normal">
-              Orchestrate course cohorts, student enrollment rosters, and daily
-              session attendance with sub-millisecond database precision. Powered
-              by NestJS and Supabase PostgreSQL.
+              Manage your student batches, take daily attendance in seconds, organize
+              schedules, and conduct auto-graded MCQ tests — all in one simple, organized workspace.
             </p>
 
             {/* Primary Action Buttons */}
@@ -68,7 +66,7 @@ export default async function HomePage() {
                 href={user ? "/dashboard" : "/login"}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-6 py-3.5 text-xs font-bold text-white shadow-md shadow-slate-900/10 hover:bg-slate-800 transition-all cursor-pointer"
               >
-                <span>{user ? "Open Console" : "Get Started with Google"}</span>
+                <span>{user ? "Open Dashboard" : "Get Started with Google"}</span>
                 <span className="text-slate-400">→</span>
               </Link>
               <Link
@@ -76,96 +74,101 @@ export default async function HomePage() {
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer"
               >
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span>Try Attendance Matrix</span>
+                <span>Try Live Attendance</span>
               </Link>
             </div>
 
-            {/* Micro Social Proof / Tech Specs */}
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400 font-medium">
+            {/* Feature Highlights */}
+            <div className="pt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-500 font-medium">
               <span className="flex items-center gap-1.5">
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                PostgreSQL Constraints
+                1-Tap Google Sign-In
               </span>
               <span className="flex items-center gap-1.5">
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                Google Identity OAuth 2.0
+                Classroom Seat Limits
               </span>
               <span className="flex items-center gap-1.5">
                 <svg className="h-3.5 w-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
-                Duplicate Student ID Rejection
+                Instant MCQ Grading
+              </span>
+              <span className="flex items-center gap-1.5">
+                <svg className="h-3.5 w-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Teacher & Admin Views
               </span>
             </div>
           </div>
 
-          {/* Interactive Live Product Mockup ("The Product is the Demo") */}
+          {/* Interactive Live Product Mockup */}
           <div className="mt-14">
             <InteractiveShowcase />
           </div>
         </div>
       </section>
 
-      {/* Metrics Strip */}
+      {/* Feature Pillars Strip */}
       <section className="border-y border-slate-200/80 bg-white py-10">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x-0 md:divide-x divide-slate-100">
-            <div className="text-center md:px-4">
-              <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono">
-                99.98%
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+            <div className="text-left sm:text-center pt-4 sm:pt-0 sm:px-4">
+              <p className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">
+                Batch Cohorts
               </p>
-              <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Attendance Capture Reliability
-              </p>
-            </div>
-
-            <div className="text-center md:px-4">
-              <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono">
-                &lt; 45ms
-              </p>
-              <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Bulk Insert Execution Time
+              <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                Set student seat limits, class subjects, and schedules without confusion.
               </p>
             </div>
 
-            <div className="text-center md:px-4">
-              <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-emerald-600 font-mono">
-                0
+            <div className="text-left sm:text-center pt-4 sm:pt-0 sm:px-4">
+              <p className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">
+                Quick Roll-Call
               </p>
-              <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Accidental Over-Enrollments
+              <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                Mark &apos;All Present&apos; or toggle individual students in seconds from phone or PC.
               </p>
             </div>
 
-            <div className="text-center md:px-4">
-              <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-blue-600 font-mono">
-                1-Click
+            <div className="text-left sm:text-center pt-4 sm:pt-0 sm:px-4">
+              <p className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">
+                MCQ Quizzes
               </p>
-              <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Google SSO Authentication
+              <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                Create practice tests with answer keys and get immediate auto-graded student scores.
+              </p>
+            </div>
+
+            <div className="text-left sm:text-center pt-4 sm:pt-0 sm:px-4">
+              <p className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950">
+                Dedicated Roles
+              </p>
+              <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                Teachers focus on their assigned classes; admins supervise the entire institute.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Bento Grid Section (Linear & Raycast Inspired) */}
-      <section id="bento" className="py-24 bg-[#fafafa]">
+      {/* Bento Grid Section */}
+      <section id="features" className="py-24 bg-[#fafafa]">
         <div className="mx-auto max-w-7xl px-6">
           <div className="max-w-2xl mb-16 space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-blue-600 font-mono">
-              [ 01 Architecture ]
+              [ 01 Features ]
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950">
-              Purpose-built tools for coaching workflows.
+              Everything you need to run your coaching center.
             </h2>
             <p className="text-sm text-slate-500">
-              Every component is crafted to eliminate operational friction and
-              accelerate faculty productivity.
+              Designed for daily classroom routines — straightforward, intuitive, and distraction-free.
             </p>
           </div>
 
@@ -175,20 +178,18 @@ export default async function HomePage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 font-mono">
-                    RULE_ENGINE // CAPACITY
+                    BATCH MANAGEMENT
                   </span>
                   <span className="text-xs text-slate-400 font-mono">
-                    PostgreSQL Trigger
+                    Capacity Control
                   </span>
                 </div>
                 <h3 className="mt-4 text-xl font-bold text-slate-900">
-                  Strict Batch Capacity Guard
+                  Prevent Overcrowded Classrooms
                 </h3>
                 <p className="mt-2 text-sm text-slate-600 leading-relaxed max-w-xl">
-                  Physical classrooms have hard seating limits. CoachingHub
-                  enforces batch capacity checks at the service level,
-                  preventing accidental over-enrollment before the database write
-                  occurs.
+                  Physical classrooms have fixed seating. Set the maximum student limit for each batch,
+                  and CoachingHub keeps track of active enrollments so you never accidentally overbook a room.
                 </p>
               </div>
 
@@ -196,7 +197,7 @@ export default async function HomePage() {
               <div className="mt-8 rounded-2xl bg-slate-50 border border-slate-100 p-5 space-y-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-800">
-                    JEE Advanced 2026 Batch
+                    Class 12 Physics (Morning)
                   </span>
                   <span className="font-mono font-semibold text-emerald-600">
                     28 / 30 Seats Filled (93%)
@@ -208,7 +209,7 @@ export default async function HomePage() {
                     style={{ width: "93.3%" }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono">
                   <span>Enrolled: 28</span>
                   <span>Max Limit: 30</span>
                   <span className="text-amber-600 font-semibold">
@@ -218,19 +219,18 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Bento Card 2: Google Workspace SSO */}
+            {/* Bento Card 2: Google Sign-In */}
             <div className="rounded-3xl border border-slate-200/90 bg-white p-8 shadow-xs flex flex-col justify-between">
               <div>
                 <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 font-mono">
-                  AUTH // OAUTH2
+                  AUTHENTICATION
                 </span>
                 <h3 className="mt-4 text-xl font-bold text-slate-900">
-                  Google SSO Integration
+                  One-Tap Google Sign-In
                 </h3>
                 <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                  No passwords to lose or reset. Instructors and institute
-                  admins log in with their institutional Google credentials in 1
-                  click.
+                  No passwords to forget or reset. Teachers, students, and institute admins sign in
+                  securely with their Google account in seconds.
                 </p>
               </div>
 
@@ -244,32 +244,31 @@ export default async function HomePage() {
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-800">Google OAuth 2.0</p>
-                  <p className="text-[11px] text-emerald-600 font-medium">Session Verified via Supabase</p>
+                  <p className="text-xs font-bold text-slate-800">Google Sign-In</p>
+                  <p className="text-[11px] text-emerald-600 font-medium">Safe, passwordless login</p>
                 </div>
               </div>
             </div>
 
-            {/* Bento Card 3: Bulk Map Insertion */}
+            {/* Bento Card 3: Daily Roll-Call */}
             <div className="rounded-3xl border border-slate-200/90 bg-white p-8 shadow-xs flex flex-col justify-between">
               <div>
                 <span className="rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700 font-mono">
-                  REST // .MAP()
+                  DAILY ROLL-CALL
                 </span>
                 <h3 className="mt-4 text-xl font-bold text-slate-900">
-                  Bulk Vectorized Ingestion
+                  Fast Attendance
                 </h3>
                 <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                  The frontend sends the batch and all student marks in one
-                  payload. The backend uses <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">.map()</code> to
-                  execute a single bulk SQL insert.
+                  Taking attendance shouldn&apos;t eat 15 minutes of lecture time. Tap &apos;All Present&apos;,
+                  toggle the few absent students, and save in seconds.
                 </p>
               </div>
 
-              <div className="mt-6 rounded-2xl bg-slate-900 p-4 font-mono text-[11px] text-slate-300">
-                <span className="text-slate-500">{"// Attendance submission"}</span>
-                <p className="text-purple-400">POST /attendance</p>
-                <p className="text-emerald-400">201 Created • 18ms</p>
+              <div className="mt-6 rounded-2xl bg-slate-900 p-4 font-mono text-xs text-slate-200 space-y-1.5">
+                <p className="text-slate-400 text-[11px]">Today&apos;s Roll-Call</p>
+                <p className="text-emerald-400 font-bold">28 Present • 2 Absent</p>
+                <p className="text-[11px] text-slate-400">Saved to Cloud in seconds</p>
               </div>
             </div>
 
@@ -278,19 +277,18 @@ export default async function HomePage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 font-mono">
-                    ERP // COHORTS
+                    STUDENTS & ASSIGNMENTS
                   </span>
                   <span className="text-xs text-slate-400 font-mono">
-                    Multi-Batch Roster
+                    Complete Overview
                   </span>
                 </div>
                 <h3 className="mt-4 text-xl font-bold text-slate-900">
-                  Unified Institute Roster & Directory
+                  Organized Rosters & Auto-Graded MCQ Tests
                 </h3>
                 <p className="mt-2 text-sm text-slate-600 leading-relaxed max-w-xl">
-                  Manage student records across physics, chemistry, mathematics,
-                  and biology cohorts. Search by student name, filter by batch,
-                  and update profiles with zero latency.
+                  Keep student contacts, batches, and attendance histories organized in one searchable directory.
+                  Teachers can assign multiple-choice quizzes that calculate scores instantly as soon as students submit.
                 </p>
               </div>
 
@@ -304,8 +302,8 @@ export default async function HomePage() {
                   <p className="text-lg font-extrabold text-slate-800">{studentsCount}</p>
                 </div>
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
-                  <p className="text-xs text-slate-400 font-medium">Audit Trail</p>
-                  <p className="text-lg font-extrabold text-emerald-600">Active</p>
+                  <p className="text-xs text-slate-400 font-medium">MCQ Tests</p>
+                  <p className="text-lg font-extrabold text-emerald-600">Instant Grading</p>
                 </div>
               </div>
             </div>
@@ -321,10 +319,10 @@ export default async function HomePage() {
               [ 02 Comparison ]
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950">
-              Why leading institutes switch to CoachingHub.
+              Why coaching centers move away from paper registers.
             </h2>
             <p className="text-sm text-slate-500">
-              Ditch fragile spreadsheets and manual registers for automated database control.
+              Replace messy paper files and fragile spreadsheets with a simple, reliable system.
             </p>
           </div>
 
@@ -337,19 +335,19 @@ export default async function HomePage() {
               <ul className="space-y-3.5 text-xs sm:text-sm text-slate-600">
                 <li className="flex items-start gap-2.5">
                   <span className="text-rose-500 font-bold">•</span>
-                  <span>Paper registers prone to loss, water damage, and theft.</span>
+                  <span>Paper registers get torn, damaged, or lost over time.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-rose-500 font-bold">•</span>
-                  <span>Spreadsheets accidentally overwritten with zero audit logs.</span>
+                  <span>Spreadsheets where formulas break or attendance marks get accidentally overwritten.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-rose-500 font-bold">•</span>
-                  <span>Over-enrolling classrooms past fire and physical seat capacity.</span>
+                  <span>Overbooking classrooms past available desks and physical seating.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-rose-500 font-bold">•</span>
-                  <span>Manual WhatsApp roll-calls wasting 15 minutes of every lecture.</span>
+                  <span>Teachers spending 15 minutes of every lecture doing manual roll-calls.</span>
                 </li>
               </ul>
             </div>
@@ -362,19 +360,19 @@ export default async function HomePage() {
               <ul className="space-y-3.5 text-xs sm:text-sm text-slate-700">
                 <li className="flex items-start gap-2.5">
                   <span className="text-emerald-500 font-bold">✓</span>
-                  <span>Centralized PostgreSQL database backed up daily in the cloud.</span>
+                  <span>Everything safely saved in the cloud and accessible anytime on phone or PC.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-emerald-500 font-bold">✓</span>
-                  <span>One-click &apos;All Present&apos; with individual status toggles in 10 seconds.</span>
+                  <span>One-click &apos;All Present&apos; roll-call completed in under 30 seconds.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-emerald-500 font-bold">✓</span>
-                  <span>Automated capacity guard blocking over-enrollment at the API layer.</span>
+                  <span>Clear batch seat limits to keep class sizes comfortable.</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <span className="text-emerald-500 font-bold">✓</span>
-                  <span>Fast Google OAuth 2.0 single sign-on with zero forgotten passwords.</span>
+                  <span>MCQ quizzes with automatic scoring that save hours of manual grading.</span>
                 </li>
               </ul>
             </div>
@@ -393,7 +391,7 @@ export default async function HomePage() {
               Frequently asked questions.
             </h2>
             <p className="text-sm text-slate-500">
-              Everything you need to know about setting up and running your coaching institute.
+              Straightforward answers about using CoachingHub for your coaching classes.
             </p>
           </div>
 
@@ -401,20 +399,20 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Dark Conversion Banner */}
+      {/* Conversion Banner */}
       <section className="py-16 bg-slate-950 text-white relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(59,130,246,0.3),rgba(255,255,255,0))]" />
 
         <div className="mx-auto max-w-5xl px-6 text-center space-y-6">
           <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3.5 py-1 text-xs font-mono font-medium text-slate-300">
-            Cloud Native ERP
+            Free & Easy Setup
           </span>
           <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
-            Start managing your coaching batches with precision today.
+            Start organizing your coaching classes today.
           </h2>
           <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto font-normal">
-            Authenticate in one second with Google OAuth and access the complete
-            suite of student, batch, and attendance management tools.
+            Sign in with your Google account to create your first batch, track attendance,
+            and assign quizzes in minutes.
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -422,14 +420,14 @@ export default async function HomePage() {
               href={user ? "/dashboard" : "/login"}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-white px-7 py-3 text-xs font-bold text-slate-950 shadow-lg hover:bg-slate-100 transition-all cursor-pointer"
             >
-              <span>{user ? "Open Console" : "Continue with Google OAuth"}</span>
+              <span>{user ? "Open Dashboard" : "Get Started with Google"}</span>
               <span>→</span>
             </Link>
             <Link
               href="/batches"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-6 py-3 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-all"
             >
-              View Active Cohorts
+              View Active Batches
             </Link>
           </div>
         </div>
@@ -443,9 +441,9 @@ export default async function HomePage() {
               C
             </div>
             <div>
-              <span className="font-bold text-slate-900">CoachingHub ERP</span>
+              <span className="font-bold text-slate-900">CoachingHub</span>
               <p className="text-[11px] text-slate-400">
-                High-performance Institute Operating System
+                Simple, organized coaching management for tutors and institutes.
               </p>
             </div>
           </div>
@@ -460,13 +458,16 @@ export default async function HomePage() {
             <Link href="/attendance" className="hover:text-slate-900 transition-colors">
               Attendance
             </Link>
+            <Link href="/assignments" className="hover:text-slate-900 transition-colors">
+              Assignments
+            </Link>
             <Link href="/dashboard" className="hover:text-slate-900 transition-colors">
-              Console
+              Dashboard
             </Link>
           </div>
 
           <p className="font-mono text-[11px] text-slate-400">
-            © {new Date().getFullYear()} CoachingHub. NestJS + Supabase.
+            © {new Date().getFullYear()} CoachingHub. Built for modern educators.
           </p>
         </div>
       </footer>
