@@ -133,6 +133,29 @@ export class AssignmentService {
       );
     }
 
+    // Check if creator is teacher, verify authorization to create assignment for this batch
+    if (creatorEmail) {
+      const adminEmails = (process.env.ADMIN_EMAILS || '')
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+      const isAdmin = adminEmails.includes(creatorEmail.toLowerCase());
+
+      if (!isAdmin) {
+        const teacherBatchIds = await this.getTeacherBatchIds(creatorEmail);
+        if (teacherBatchIds.length > 0) {
+          const isAllowed = teacherBatchIds.some(
+            (bId) => String(bId) === String(createDto.batch_id),
+          );
+          if (!isAllowed) {
+            throw new BadRequestException(
+              'Teachers can only create assignments for their assigned batches.',
+            );
+          }
+        }
+      }
+    }
+
     // 2. Validate questions
     if (!createDto.questions || createDto.questions.length === 0) {
       throw new BadRequestException('Assignment must have at least one question.');

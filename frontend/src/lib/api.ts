@@ -315,6 +315,9 @@ async function request<T>(
       if (session?.user?.email) {
         authHeaders["x-user-email"] = session.user.email;
       }
+      if (session?.user?.user_metadata?.role) {
+        authHeaders["x-user-role"] = session.user.user_metadata.role;
+      }
     } catch {
       // Ignore if session fetch fails
     }
@@ -385,13 +388,16 @@ export const api = {
   },
 
   batches: {
-    list: async (query?: {
-      course?: string;
-      status?: string;
-      search?: string;
-      teacher_id?: string;
-      teacher_email?: string;
-    }) => {
+    list: async (
+      query?: {
+        course?: string;
+        status?: string;
+        search?: string;
+        teacher_id?: string;
+        teacher_email?: string;
+      },
+      headers?: Record<string, string>
+    ) => {
       const params = new URLSearchParams();
       if (query?.course) params.set("course", query.course);
       if (query?.status) params.set("status", query.status);
@@ -400,39 +406,56 @@ export const api = {
       if (query?.teacher_email) params.set("teacher_email", query.teacher_email);
 
       const qs = params.toString() ? `?${params.toString()}` : "";
-      const res = await request<Batch[]>(`/batch${qs}`);
+      const res = await request<Batch[]>(`/batch${qs}`, { headers });
       return res.data ?? [];
     },
-    get: async (id: string | number) => {
-      const res = await request<Batch>(`/batch/${id}`);
+    get: async (id: string | number, headers?: Record<string, string>) => {
+      const res = await request<Batch>(`/batch/${id}`, { headers });
       return res.data;
     },
-    create: async (data: CreateBatchInput) => {
+    create: async (data: CreateBatchInput, headers?: Record<string, string>) => {
       const res = await request<Batch>("/batch", {
         method: "POST",
         body: JSON.stringify(data),
+        headers,
       });
       return res.data;
     },
-    update: async (id: string | number, data: Partial<CreateBatchInput>) => {
+    update: async (
+      id: string | number,
+      data: Partial<CreateBatchInput>,
+      headers?: Record<string, string>
+    ) => {
       const res = await request<Batch>(`/batch/${id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
+        headers,
       });
       return res.data;
     },
-    delete: async (id: string | number) => {
+    delete: async (id: string | number, headers?: Record<string, string>) => {
       const res = await request<Batch>(`/batch/${id}`, {
         method: "DELETE",
+        headers,
       });
       return res.data;
     },
-    getStudents: async (batchId: string | number) => {
-      const res = await request<Student[]>(`/batch/${batchId}/students`);
+    getStudents: async (
+      batchId: string | number,
+      headers?: Record<string, string>
+    ) => {
+      const res = await request<Student[]>(`/batch/${batchId}/students`, {
+        headers,
+      });
       return res.data ?? [];
     },
-    getStats: async (batchId: string | number) => {
-      const res = await request<BatchStats>(`/batch/${batchId}/stats`);
+    getStats: async (
+      batchId: string | number,
+      headers?: Record<string, string>
+    ) => {
+      const res = await request<BatchStats>(`/batch/${batchId}/stats`, {
+        headers,
+      });
       return res.data;
     },
     assignStudent: async (

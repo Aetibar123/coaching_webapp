@@ -14,9 +14,13 @@ export default async function AttendancePage() {
   let batches: Batch[] = [];
   try {
     const isTeacher = user.role === "teacher";
+    const authHeaders = {
+      "x-user-role": user.role || "",
+      "x-user-email": user.email || "",
+    };
     batches = isTeacher
-      ? await api.batches.list({ teacher_email: user.email })
-      : await api.batches.list();
+      ? await api.batches.list({ teacher_email: user.email }, authHeaders)
+      : await api.batches.list(undefined, authHeaders);
   } catch (err) {
     console.error("Failed to load batches for attendance:", err);
   }
