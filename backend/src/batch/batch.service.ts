@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -17,20 +18,157 @@ export class BatchService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
   /**
+   * Helper to check if user is a teacher and resolve teacher email
+   */
+  private async isUserTeacher(
+    userContext?: { role?: string; email?: string },
+    explicitTeacherEmail?: string,
+  ): Promise<{ isTeacher: boolean; teacherEmail?: string }> {
+    const supabase = this.supabaseService.getClient();
+    const effectiveEmail = (
+      explicitTeacherEmail || userContext?.email
+    )?.toLowerCase()?.trim();
+    const headerRole = userContext?.role?.toLowerCase()?.trim();
+
+    const adminEmails = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    // 1. Check if user is Admin
+    if (headerRole === 'admin' || (effectiveEmail && adminEmails.includes(effectiveEmail))) {
+      return { isTeacher: false, teacherEmail: effectiveEmail };
+    }
+
+    // 2. Explicit teacher role
+    if (headerRole === 'teacher' || explicitTeacherEmail) {
+      return { isTeacher: true, teacherEmail: effectiveEmail };
+    }
+
+    // 3. Fallback: If role not sent, check teachers and profiles tables by email
+    if (effectiveEmail) {
+      try {
+        const tCheck = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('email', effectiveEmail)
+          .maybeSingle();
+
+        if (tCheck.data) {
+          return { isTeacher: true, teacherEmail: effectiveEmail };
+        }
+
+        const pCheck = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('email', effectiveEmail)
+          .maybeSingle();
+
+        if (pCheck.data?.role?.toLowerCase() === 'teacher') {
+          return { isTeacher: true, teacherEmail: effectiveEmail };
+        }
+      } catch {
+        // Fallback on error
+      }
+    }
+
+    return { isTeacher: false, teacherEmail: effectiveEmail };
+  }
+
+  /**
+   * Helper to retrieve batch IDs assigned to a specific teacher
+   */
+  private async getTeacherAssignedBatchIds(
+    email?: string,
+  ): Promise<(string | number)[]> {
+    if (!email) return [];
+    const supabase = this.supabaseService.getClient();
+
+    try {
+      const teacherRes = (await supabase
+        .from('teachers')
+        .select('id, name')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle()) as {
+        data: { id: string; name: string } | null;
+        error: { message: string } | null;
+      };
+
+      const batchIdSet = new Set<string | number>();
+
+      if (teacherRes.data) {
+        const teacher = teacherRes.data;
+
+        // 1. Check batches assigned by teacher_id
+        try {
+          const byIdRes = (await supabase
+            .from('batch')
+            .select('id')
+            .eq('teacher_id', teacher.id)) as {
+            data: { id: string | number }[] | null;
+          };
+          (byIdRes.data ?? []).forEach((b) => batchIdSet.add(b.id));
+        } catch {
+          // Column teacher_id might not exist or error
+        }
+
+        // 2. Check batches assigned by instructor name
+        if (teacher.name) {
+          try {
+            const byNameRes = (await supabase
+              .from('batch')
+              .select('id')
+              .ilike('instructor', `%${teacher.name}%`)) as {
+              data: { id: string | number }[] | null;
+            };
+            (byNameRes.data ?? []).forEach((b) => batchIdSet.add(b.id));
+          } catch {
+            // Ignore
+          }
+        }
+      }
+
+      // 3. Check batches assigned by instructor email
+      try {
+        const byEmailRes = (await supabase
+          .from('batch')
+          .select('id')
+          .ilike('instructor', `%${email}%`)) as {
+          data: { id: string | number }[] | null;
+        };
+        (byEmailRes.data ?? []).forEach((b) => batchIdSet.add(b.id));
+      } catch {
+        // Ignore
+      }
+
+      return Array.from(batchIdSet);
+    } catch (err) {
+      this.logger.error(`Error resolving assigned batches for teacher ${email}:`, err);
+      return [];
+    }
+  }
+
+  /**
    * Create a new batch
    */
   async createBatch(createBatchDto: CreateBatchDto) {
     const supabase = this.supabaseService.getClient();
 
     try {
-      const payload = {
-        ...createBatchDto,
-        status: createBatchDto.status ?? 'active',
-      };
-
       const { data, error } = await supabase
         .from('batch')
-        .insert(payload)
+        .insert({
+          name: createBatchDto.name,
+          course: createBatchDto.course,
+          description: createBatchDto.description ?? null,
+          instructor: createBatchDto.instructor ?? null,
+          teacher_id: createBatchDto.teacher_id ?? null,
+          capacity: createBatchDto.capacity ?? 30,
+          fee: createBatchDto.fee ?? 0,
+          start_date: createBatchDto.start_date ?? null,
+          end_date: createBatchDto.end_date ?? null,
+          status: createBatchDto.status ?? 'active',
+        })
         .select()
         .single();
 
@@ -55,7 +193,8 @@ export class BatchService {
   }
 
   /**
-   * Retrieve all batches with optional course, status, or search filters
+   * Retrieve all batches with optional course, status, or search filters.
+   * Teachers are strictly restricted to their own assigned batches only.
    */
   async findAllBatches(
     query?: BatchQueryDto,
@@ -79,31 +218,14 @@ export class BatchService {
         request = request.eq('teacher_id', query.teacher_id);
       }
 
-      // Check teacher role filtering
-      const isTeacherRole = userContext?.role?.toLowerCase() === 'teacher';
-      const effectiveTeacherEmail =
-        query?.teacher_email || (isTeacherRole ? userContext?.email : undefined);
+      // Check if user is a teacher
+      const { isTeacher, teacherEmail } = await this.isUserTeacher(
+        userContext,
+        query?.teacher_email,
+      );
 
-      if (effectiveTeacherEmail) {
-        // Resolve teacher by email
-        const teacherRes = (await supabase
-          .from('teachers')
-          .select('id, name')
-          .eq('email', effectiveTeacherEmail.toLowerCase().trim())
-          .maybeSingle()) as {
-          data: { id: string; name: string } | null;
-          error: { message: string } | null;
-        };
-
-        const teacherData = teacherRes.data;
-
-        if (teacherData) {
-          // Filter by teacher_id or instructor name
-          request = request.or(
-            `teacher_id.eq.${teacherData.id},instructor.ilike.${teacherData.name}`,
-          );
-        } else if (isTeacherRole) {
-          // If logged in as teacher but not assigned to any teacher profile yet, return 0 batches
+      if (isTeacher) {
+        if (!teacherEmail) {
           return {
             success: true,
             message: 'No batches assigned to this teacher',
@@ -111,6 +233,20 @@ export class BatchService {
             data: [],
           };
         }
+
+        const assignedBatchIds = await this.getTeacherAssignedBatchIds(teacherEmail);
+
+        if (assignedBatchIds.length === 0) {
+          return {
+            success: true,
+            message: 'No batches assigned to this teacher',
+            count: 0,
+            data: [],
+          };
+        }
+
+        // Strictly constrain query to only the teacher's assigned batches
+        request = request.in('id', assignedBatchIds);
       }
 
       const { data, error } = await request;
@@ -137,12 +273,27 @@ export class BatchService {
   }
 
   /**
-   * Retrieve a single batch by ID
+   * Retrieve a single batch by ID (scoped for teachers)
    */
-  async findBatchById(id: string | number) {
+  async findBatchById(
+    id: string | number,
+    userContext?: { role?: string; email?: string },
+  ) {
     const supabase = this.supabaseService.getClient();
 
     try {
+      // If user is a teacher, verify they are assigned to this batch
+      const { isTeacher, teacherEmail } = await this.isUserTeacher(userContext);
+      if (isTeacher && teacherEmail) {
+        const assignedBatchIds = await this.getTeacherAssignedBatchIds(teacherEmail);
+        const hasAccess = assignedBatchIds.some((bId) => String(bId) === String(id));
+        if (!hasAccess) {
+          throw new ForbiddenException(
+            'You do not have permission to access batches not assigned to you',
+          );
+        }
+      }
+
       const { data, error } = await supabase
         .from('batch')
         .select()
@@ -166,7 +317,8 @@ export class BatchService {
       this.logger.error('Batch Find By ID Error:', error);
       if (
         error instanceof BadRequestException ||
-        error instanceof NotFoundException
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
       ) {
         throw error;
       }
@@ -177,7 +329,7 @@ export class BatchService {
   }
 
   /**
-   * Update an existing batch
+   * Update an existing batch (Admin only)
    */
   async updateBatch(id: string | number, updateBatchDto: UpdateBatchDto) {
     const supabase = this.supabaseService.getClient();
@@ -226,7 +378,7 @@ export class BatchService {
   }
 
   /**
-   * Delete a batch
+   * Delete a batch (Admin only)
    */
   async deleteBatch(id: string | number) {
     const supabase = this.supabaseService.getClient();
@@ -269,13 +421,16 @@ export class BatchService {
   }
 
   /**
-   * Retrieve all students enrolled in a specific batch
+   * Retrieve all students enrolled in a specific batch (Teacher scoped)
    */
-  async getBatchStudents(batchId: string | number) {
+  async getBatchStudents(
+    batchId: string | number,
+    userContext?: { role?: string; email?: string },
+  ) {
     const supabase = this.supabaseService.getClient();
 
-    // Verify batch exists
-    await this.findBatchById(batchId);
+    // Verify batch exists and user has authorization
+    await this.findBatchById(batchId, userContext);
 
     try {
       const { data, error } = await supabase
@@ -298,7 +453,8 @@ export class BatchService {
       this.logger.error('Get Batch Students Error:', error);
       if (
         error instanceof BadRequestException ||
-        error instanceof NotFoundException
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
       ) {
         throw error;
       }
@@ -376,11 +532,12 @@ export class BatchService {
             id: batch.id,
             name: batch.name,
             course: batch.course,
+            capacity: batch.capacity,
           },
         },
       };
     } catch (error) {
-      this.logger.error('Add Student To Batch Error:', error);
+      this.logger.error('Assign Student To Batch Error:', error);
       if (
         error instanceof BadRequestException ||
         error instanceof NotFoundException
@@ -460,13 +617,16 @@ export class BatchService {
   }
 
   /**
-   * Get statistics for a batch (capacity, enrollment, vacancy)
+   * Get statistics for a batch (capacity, enrollment, vacancy, scoped for teachers)
    */
-  async getBatchStats(batchId: string | number) {
+  async getBatchStats(
+    batchId: string | number,
+    userContext?: { role?: string; email?: string },
+  ) {
     const supabase = this.supabaseService.getClient();
 
-    // Verify batch exists
-    const batchRes = await this.findBatchById(batchId);
+    // Verify batch exists and user has authorization
+    const batchRes = await this.findBatchById(batchId, userContext);
     const batch = batchRes.data;
 
     try {
@@ -507,7 +667,8 @@ export class BatchService {
       this.logger.error('Get Batch Stats Error:', error);
       if (
         error instanceof BadRequestException ||
-        error instanceof NotFoundException
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
       ) {
         throw error;
       }

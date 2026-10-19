@@ -15,12 +15,16 @@ export default async function BatchesPage() {
   let teachers: Teacher[] = [];
 
   const isTeacher = user.role === "teacher";
+  const authHeaders = {
+    "x-user-role": user.role || "",
+    "x-user-email": user.email || "",
+  };
 
   try {
     const [batchesData, studentsData, teachersData] = await Promise.all([
       isTeacher
-        ? api.batches.list({ teacher_email: user.email })
-        : api.batches.list(),
+        ? api.batches.list({ teacher_email: user.email }, authHeaders)
+        : api.batches.list(undefined, authHeaders),
       api.students.list(),
       api.teachers.list().catch(() => []),
     ]);

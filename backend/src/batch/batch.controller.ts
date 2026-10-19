@@ -51,8 +51,15 @@ export class BatchController {
    * GET /batch/:id
    */
   @Get(':id')
-  findBatchById(@Param('id') id: string) {
-    return this.batchService.findBatchById(id);
+  findBatchById(
+    @Param('id') id: string,
+    @Headers('x-user-role') roleHeader?: string,
+    @Headers('x-user-email') emailHeader?: string,
+  ) {
+    return this.batchService.findBatchById(id, {
+      role: roleHeader,
+      email: emailHeader,
+    });
   }
 
   /**
@@ -80,8 +87,15 @@ export class BatchController {
    * GET /batch/:id/students
    */
   @Get(':id/students')
-  getBatchStudents(@Param('id') id: string) {
-    return this.batchService.getBatchStudents(id);
+  getBatchStudents(
+    @Param('id') id: string,
+    @Headers('x-user-role') roleHeader?: string,
+    @Headers('x-user-email') emailHeader?: string,
+  ) {
+    return this.batchService.getBatchStudents(id, {
+      role: roleHeader,
+      email: emailHeader,
+    });
   }
 
   /**
@@ -89,8 +103,15 @@ export class BatchController {
    * GET /batch/:id/stats
    */
   @Get(':id/stats')
-  getBatchStats(@Param('id') id: string) {
-    return this.batchService.getBatchStats(id);
+  getBatchStats(
+    @Param('id') id: string,
+    @Headers('x-user-role') roleHeader?: string,
+    @Headers('x-user-email') emailHeader?: string,
+  ) {
+    return this.batchService.getBatchStats(id, {
+      role: roleHeader,
+      email: emailHeader,
+    });
   }
 
   /**

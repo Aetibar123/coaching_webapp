@@ -55,14 +55,37 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     }
   }
 
+  const fullName =
+    user.user_metadata?.full_name ||
+    user.user_metadata?.name ||
+    user.email?.split("@")[0] ||
+    "User";
+
+  // If user is a teacher, ensure they exist in teachers table so admin can see and assign cohorts
+  if (role === "teacher" && user.email) {
+    try {
+      const { data: tData } = await supabase
+        .from("teachers")
+        .select("id")
+        .eq("email", user.email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (!tData) {
+        await supabase.from("teachers").insert({
+          name: fullName,
+          email: user.email.toLowerCase().trim(),
+          subject: "Faculty",
+        });
+      }
+    } catch {
+      // Ignore background insert failure
+    }
+  }
+
   return {
     id: user.id,
     email: user.email,
-    fullName:
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      user.email?.split("@")[0] ||
-      "User",
+    fullName,
     avatarUrl:
       user.user_metadata?.avatar_url || user.user_metadata?.picture,
     role,

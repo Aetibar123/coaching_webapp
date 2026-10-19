@@ -17,6 +17,7 @@ export function BatchesClient({
   allStudents,
   allTeachers = [],
   userRole,
+  userEmail,
 }: BatchesClientProps) {
   const isAdmin = userRole?.toLowerCase() === "admin";
   const [batches, setBatches] = useState<Batch[]>(initialBatches);
@@ -28,6 +29,24 @@ export function BatchesClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [newBatch, setNewBatch] = useState({
+    name: "",
+    course: "",
+    description: "",
+    instructor: "",
+    teacher_id: "",
+    capacity: 30,
+    fee: 0,
+    start_date: "",
+    end_date: "",
+    status: "active",
+  });
+
+  // Edit Batch Modal State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingBatchId, setEditingBatchId] = useState<string | number | null>(null);
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
+  const [editBatch, setEditBatch] = useState({
     name: "",
     course: "",
     description: "",
@@ -102,6 +121,73 @@ export function BatchesClient({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (batch: Batch) => {
+    setEditingBatchId(batch.id);
+    setEditFormError(null);
+    setEditBatch({
+      name: batch.name || "",
+      course: batch.course || "",
+      description: batch.description || "",
+      instructor: batch.instructor || "",
+      teacher_id: batch.teacher_id ? String(batch.teacher_id) : "",
+      capacity: batch.capacity || 30,
+      fee: batch.fee || 0,
+      start_date: batch.start_date ? batch.start_date.split("T")[0] : "",
+      end_date: batch.end_date ? batch.end_date.split("T")[0] : "",
+      status: batch.status || "active",
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdateBatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBatchId) return;
+
+    setEditFormError(null);
+    setIsEditSubmitting(true);
+
+    try {
+      const authHeaders = {
+        "x-user-role": userRole || "",
+        "x-user-email": userEmail || "",
+      };
+
+      const updated = await api.batches.update(
+        editingBatchId,
+        {
+          name: editBatch.name.trim(),
+          course: editBatch.course.trim(),
+          description: editBatch.description?.trim() || undefined,
+          instructor: editBatch.instructor?.trim() || undefined,
+          teacher_id: editBatch.teacher_id || undefined,
+          capacity: Number(editBatch.capacity) || 30,
+          fee: Number(editBatch.fee) || 0,
+          start_date: editBatch.start_date || undefined,
+          end_date: editBatch.end_date || undefined,
+          status: editBatch.status || "active",
+        },
+        authHeaders
+      );
+
+      if (updated) {
+        setBatches((prev) =>
+          prev.map((b) => (b.id === updated.id ? updated : b))
+        );
+        if (selectedBatch && selectedBatch.id === updated.id) {
+          setSelectedBatch(updated);
+        }
+      }
+      setIsEditOpen(false);
+      setEditingBatchId(null);
+    } catch (err: unknown) {
+      setEditFormError(
+        err instanceof Error ? err.message : "Failed to update batch"
+      );
+    } finally {
+      setIsEditSubmitting(false);
     }
   };
 
@@ -327,12 +413,16 @@ export function BatchesClient({
       {/* Batches Grid */}
       {filteredBatches.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-          <span className="text-4xl">🔍</span>
+          <span className="text-4xl">{batches.length === 0 && !isAdmin ? "📋" : "🔍"}</span>
           <h3 className="mt-2 text-base font-semibold text-slate-800">
-            No batches found
+            {batches.length === 0 && !isAdmin
+              ? "No Batches Assigned"
+              : "No batches found"}
           </h3>
           <p className="text-sm text-slate-500">
-            Try adjusting your search filters or create a new batch.
+            {batches.length === 0 && !isAdmin
+              ? "You do not have any batches assigned yet. An administrator must allocate batches to your teacher profile before you can manage cohorts."
+              : "Try adjusting your search filters or create a new batch."}
           </p>
         </div>
       ) : (
@@ -412,12 +502,20 @@ export function BatchesClient({
                     Attendance
                   </Link>
                   {isAdmin && (
-                    <button
-                      onClick={() => handleDeleteBatch(batch.id)}
-                      className="text-red-500 hover:text-red-700 cursor-pointer"
-                    >
-                      Delete
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleOpenEdit(batch)}
+                        className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBatch(batch.id)}
+                        className="text-red-500 hover:text-red-700 font-semibold cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -595,6 +693,224 @@ export function BatchesClient({
         </div>
       )}
 
+      {/* Edit Batch Modal (Admin Only) */}
+      {isEditOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Edit Cohort Settings
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Update batch capacity, faculty instructor, and syllabus timeline.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsEditOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editFormError && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                {editFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateBatch} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">
+                  Batch Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Physics JEE Advanced 2026"
+                  value={editBatch.name}
+                  onChange={(e) =>
+                    setEditBatch({ ...editBatch, name: e.target.value })
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">
+                  Course *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. JEE Physics"
+                  value={editBatch.course}
+                  onChange={(e) =>
+                    setEditBatch({ ...editBatch, course: e.target.value })
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">
+                  Assigned Teacher / Instructor
+                </label>
+                {allTeachers && allTeachers.length > 0 ? (
+                  <select
+                    value={editBatch.teacher_id}
+                    onChange={(e) => {
+                      const tId = e.target.value;
+                      const tObj = allTeachers.find((t) => t.id === tId);
+                      setEditBatch({
+                        ...editBatch,
+                        teacher_id: tId,
+                        instructor: tObj ? tObj.name : "",
+                      });
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select Faculty...</option>
+                    {allTeachers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.subject || t.email})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Instructor Name"
+                    value={editBatch.instructor}
+                    onChange={(e) =>
+                      setEditBatch({ ...editBatch, instructor: e.target.value })
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Capacity (Seats) *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={editBatch.capacity}
+                    onChange={(e) =>
+                      setEditBatch({
+                        ...editBatch,
+                        capacity: Number(e.target.value),
+                      })
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Status
+                  </label>
+                  <select
+                    value={editBatch.status}
+                    onChange={(e) =>
+                      setEditBatch({ ...editBatch, status: e.target.value })
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="active">Active</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">
+                  Course Fee (₹)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={editBatch.fee}
+                  onChange={(e) =>
+                    setEditBatch({
+                      ...editBatch,
+                      fee: Number(e.target.value),
+                    })
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editBatch.start_date}
+                    onChange={(e) =>
+                      setEditBatch({ ...editBatch, start_date: e.target.value })
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editBatch.end_date}
+                    onChange={(e) =>
+                      setEditBatch({ ...editBatch, end_date: e.target.value })
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">
+                  Description / Syllabus Details
+                </label>
+                <textarea
+                  rows={2}
+                  value={editBatch.description}
+                  onChange={(e) =>
+                    setEditBatch({ ...editBatch, description: e.target.value })
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditSubmitting}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+                >
+                  {isEditSubmitting ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Batch Details & Student Enrollment Modal */}
       {selectedBatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
@@ -608,12 +924,22 @@ export function BatchesClient({
                   Course: {selectedBatch.course}
                 </p>
               </div>
-              <button
-                onClick={() => setSelectedBatch(null)}
-                className="text-slate-400 hover:text-slate-600 text-lg"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    onClick={() => handleOpenEdit(selectedBatch)}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-2xs"
+                  >
+                    ✏️ Edit Batch
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedBatch(null)}
+                  className="text-slate-400 hover:text-slate-600 text-lg cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Batch Statistics Bar */}

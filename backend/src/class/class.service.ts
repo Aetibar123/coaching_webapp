@@ -41,6 +41,61 @@ export class ClassService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
   /**
+   * Helper to check if user is a teacher and resolve email
+   */
+  private async isUserTeacher(
+    userContext?: { role?: string; email?: string },
+    explicitTeacherEmail?: string,
+  ): Promise<{ isTeacher: boolean; userEmail?: string }> {
+    const supabase = this.supabaseService.getClient();
+    const effectiveEmail = (
+      explicitTeacherEmail || userContext?.email
+    )?.toLowerCase()?.trim();
+    const headerRole = userContext?.role?.toLowerCase()?.trim();
+
+    const adminEmails = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (headerRole === 'admin' || (effectiveEmail && adminEmails.includes(effectiveEmail))) {
+      return { isTeacher: false, userEmail: effectiveEmail };
+    }
+
+    if (headerRole === 'teacher' || explicitTeacherEmail) {
+      return { isTeacher: true, userEmail: effectiveEmail };
+    }
+
+    if (effectiveEmail) {
+      try {
+        const tCheck = await supabase
+          .from('teachers')
+          .select('id')
+          .eq('email', effectiveEmail)
+          .maybeSingle();
+
+        if (tCheck.data) {
+          return { isTeacher: true, userEmail: effectiveEmail };
+        }
+
+        const pCheck = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('email', effectiveEmail)
+          .maybeSingle();
+
+        if (pCheck.data?.role?.toLowerCase() === 'teacher') {
+          return { isTeacher: true, userEmail: effectiveEmail };
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    return { isTeacher: false, userEmail: effectiveEmail };
+  }
+
+  /**
    * Helper to retrieve batches assigned to a teacher
    */
   private async getTeacherBatchIds(email?: string): Promise<(string | number)[]> {
@@ -147,9 +202,9 @@ export class ClassService {
       }
 
       // 2. If teacher, verify authorization to schedule for this batch
-      const isTeacher = userContext?.role?.toLowerCase() === 'teacher';
+      const { isTeacher, userEmail } = await this.isUserTeacher(userContext);
       if (isTeacher) {
-        const allowedBatchIds = await this.getTeacherBatchIds(userContext?.email);
+        const allowedBatchIds = await this.getTeacherBatchIds(userEmail);
         const isAllowed = allowedBatchIds.some(
           (bId) => String(bId) === String(dto.batch_id),
         );
@@ -212,25 +267,11 @@ export class ClassService {
     const supabase = this.supabaseService.getClient();
 
     try {
+      const { isTeacher, userEmail } = await this.isUserTeacher(
+        userContext,
+        query?.teacher_email,
+      );
       const normalizedRole = userContext?.role?.toLowerCase();
-      const userEmail = (userContext?.email || query?.teacher_email)?.toLowerCase().trim();
-      let isTeacher = normalizedRole === 'teacher';
-
-      // Auto-detect teacher if role wasn't explicitly passed
-      if (!isTeacher && normalizedRole !== 'admin' && userEmail) {
-        try {
-          const tRes = (await supabase
-            .from('teachers')
-            .select('id')
-            .eq('email', userEmail)
-            .maybeSingle()) as { data: { id: string } | null };
-          if (tRes.data) {
-            isTeacher = true;
-          }
-        } catch {
-          // Ignore
-        }
-      }
 
       let allowedBatchIds: (string | number)[] | null = null;
       if (isTeacher) {
@@ -273,6 +314,14 @@ export class ClassService {
       let req = supabase.from('classes').select('*');
 
       if (query?.batch_id) {
+        if (isTeacher && allowedBatchIds !== null) {
+          const isAllowed = allowedBatchIds.some(
+            (bId) => String(bId) === String(query.batch_id),
+          );
+          if (!isAllowed) {
+            return { success: true, count: 0, data: [] };
+          }
+        }
         req = req.eq('batch_id', query.batch_id);
       } else if (allowedBatchIds !== null) {
         req = req.in('batch_id', allowedBatchIds);
@@ -411,9 +460,9 @@ export class ClassService {
       };
 
       // 2. Role authorization check
-      const isTeacher = userContext?.role?.toLowerCase() === 'teacher';
+      const { isTeacher, userEmail } = await this.isUserTeacher(userContext);
       if (isTeacher) {
-        const allowedBatchIds = await this.getTeacherBatchIds(userContext?.email);
+        const allowedBatchIds = await this.getTeacherBatchIds(userEmail);
         const isAllowed = allowedBatchIds.some(
           (bId) => String(bId) === String(classItem.batch_id),
         );

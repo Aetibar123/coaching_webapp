@@ -119,7 +119,74 @@ export class TeacherService {
         );
       }
 
-      const teachers = listRes.data ?? [];
+      const teachers = listRes.data ? [...listRes.data] : [];
+      const existingEmails = new Set(
+        teachers.map((t) => t.email.toLowerCase().trim()),
+      );
+
+      // Auto-sync users who logged in as teachers from profiles table into teachers directory
+      try {
+        const adminEmails = (process.env.ADMIN_EMAILS || '')
+          .split(',')
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean);
+
+        const profilesRes = (await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .ilike('role', 'teacher')) as {
+          data: { id: string; email: string; full_name?: string }[] | null;
+        };
+
+        const profilesToSync = (profilesRes.data ?? []).filter(
+          (p) =>
+            p.email &&
+            !existingEmails.has(p.email.toLowerCase().trim()) &&
+            !adminEmails.includes(p.email.toLowerCase().trim()),
+        );
+
+        for (const p of profilesToSync) {
+          const teacherEmail = p.email.toLowerCase().trim();
+          const teacherName = (p.full_name || p.email.split('@')[0]).trim();
+
+          try {
+            const insRes = (await supabase
+              .from('teachers')
+              .insert({
+                name: teacherName,
+                email: teacherEmail,
+                subject: 'Faculty',
+              })
+              .select()
+              .maybeSingle()) as { data: TeacherRecord | null };
+
+            if (insRes.data) {
+              teachers.push(insRes.data);
+              existingEmails.add(teacherEmail);
+            } else {
+              teachers.push({
+                id: p.id,
+                name: teacherName,
+                email: teacherEmail,
+                subject: 'Faculty',
+                created_at: new Date().toISOString(),
+              });
+              existingEmails.add(teacherEmail);
+            }
+          } catch {
+            teachers.push({
+              id: p.id,
+              name: teacherName,
+              email: teacherEmail,
+              subject: 'Faculty',
+              created_at: new Date().toISOString(),
+            });
+            existingEmails.add(teacherEmail);
+          }
+        }
+      } catch (syncErr) {
+        this.logger.warn('Error auto-syncing teacher accounts:', syncErr);
+      }
 
       // Query batches to map assigned batches to each teacher
       const batchesRes = (await supabase

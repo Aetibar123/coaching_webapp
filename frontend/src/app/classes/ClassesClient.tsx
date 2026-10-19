@@ -63,11 +63,18 @@ export function ClassesClient({
   const refreshClasses = async (bId = selectedBatchId, status = statusFilter) => {
     setLoading(true);
     try {
-      const data = await api.classes.list({
-        batch_id: bId || undefined,
-        status: status !== "all" ? status : undefined,
-        teacher_email: userRole === "teacher" ? userEmail : undefined,
-      });
+      const authHeaders = {
+        "x-user-role": userRole || "",
+        "x-user-email": userEmail || "",
+      };
+      const data = await api.classes.list(
+        {
+          batch_id: bId || undefined,
+          status: status !== "all" ? status : undefined,
+          teacher_email: userRole === "teacher" ? userEmail : undefined,
+        },
+        authHeaders
+      );
       setClassesList(data);
     } catch (err) {
       setNotification({
@@ -88,16 +95,23 @@ export function ClassesClient({
     setNotification(null);
 
     try {
-      const created = await api.classes.create({
-        batch_id: scheduleForm.batch_id,
-        title: scheduleForm.title.trim(),
-        description: scheduleForm.description?.trim() || undefined,
-        date: scheduleForm.date,
-        start_time: scheduleForm.start_time,
-        end_time: scheduleForm.end_time,
-        room: scheduleForm.room?.trim() || undefined,
-        meeting_link: scheduleForm.meeting_link?.trim() || undefined,
-      });
+      const authHeaders = {
+        "x-user-role": userRole || "",
+        "x-user-email": userEmail || "",
+      };
+      const created = await api.classes.create(
+        {
+          batch_id: scheduleForm.batch_id,
+          title: scheduleForm.title.trim(),
+          description: scheduleForm.description?.trim() || undefined,
+          date: scheduleForm.date,
+          start_time: scheduleForm.start_time,
+          end_time: scheduleForm.end_time,
+          room: scheduleForm.room?.trim() || undefined,
+          meeting_link: scheduleForm.meeting_link?.trim() || undefined,
+        },
+        authHeaders
+      );
 
       if (created) {
         setClassesList((prev) => [created, ...prev]);
@@ -149,14 +163,22 @@ export function ClassesClient({
     setNotification(null);
 
     try {
-      const updated = await api.classes.reschedule(rescheduleTarget.id, {
-        date: rescheduleForm.date,
-        start_time: rescheduleForm.start_time,
-        end_time: rescheduleForm.end_time,
-        reason: rescheduleForm.reason?.trim() || "Rescheduled by instructor",
-        room: rescheduleForm.room?.trim() || undefined,
-        meeting_link: rescheduleForm.meeting_link?.trim() || undefined,
-      });
+      const authHeaders = {
+        "x-user-role": userRole || "",
+        "x-user-email": userEmail || "",
+      };
+      const updated = await api.classes.reschedule(
+        rescheduleTarget.id,
+        {
+          date: rescheduleForm.date,
+          start_time: rescheduleForm.start_time,
+          end_time: rescheduleForm.end_time,
+          reason: rescheduleForm.reason?.trim() || "Rescheduled by instructor",
+          room: rescheduleForm.room?.trim() || undefined,
+          meeting_link: rescheduleForm.meeting_link?.trim() || undefined,
+        },
+        authHeaders
+      );
 
       if (updated) {
         setClassesList((prev) =>
@@ -634,7 +656,15 @@ export function ClassesClient({
               </button>
             </div>
 
-            <form onSubmit={handleScheduleSubmit} className="space-y-4">
+            {batches.length === 0 ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800 space-y-1">
+                <p className="font-bold">No Cohorts Assigned</p>
+                <p>
+                  You are not assigned to any batches yet. Teachers can only schedule classes for batches specifically allocated to them by an administrator.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleScheduleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Select Cohort / Batch *
@@ -788,6 +818,7 @@ export function ClassesClient({
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}
