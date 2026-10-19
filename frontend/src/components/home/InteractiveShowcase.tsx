@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-type TabKey = "attendance" | "batches" | "roster";
+type TabKey = "attendance" | "batches" | "assignments";
 
 export function InteractiveShowcase() {
   const [activeTab, setActiveTab] = useState<TabKey>("attendance");
@@ -17,6 +17,9 @@ export function InteractiveShowcase() {
     { id: 5, name: "Ananya Iyer", roll: "PH-105", status: "absent", time: "-" },
     { id: 6, name: "Kabir Sengupta", roll: "PH-106", status: "present", time: "09:01 AM" },
   ]);
+
+  // Interactive state for MCQ demo
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
 
   const toggleStatus = (id: number) => {
     setStudents((prev) =>
@@ -53,7 +56,7 @@ export function InteractiveShowcase() {
 
   return (
     <div className="relative mx-auto max-w-5xl rounded-2xl border border-slate-200/90 bg-white shadow-2xl shadow-slate-900/10 overflow-hidden">
-      {/* Mac Window Header Bar */}
+      {/* Window Header Bar */}
       <div className="flex flex-wrap items-center justify-between border-b border-slate-200/80 bg-slate-50/80 px-4 py-3 gap-3">
         {/* Window Controls */}
         <div className="flex items-center gap-2">
@@ -63,7 +66,7 @@ export function InteractiveShowcase() {
             <span className="h-3 w-3 rounded-full bg-emerald-400/80 border border-emerald-500/30" />
           </div>
           <span className="ml-3 font-mono text-xs font-medium text-slate-400">
-            coachinghub.internal/console
+            coachinghub.app/demo
           </span>
         </div>
 
@@ -77,7 +80,7 @@ export function InteractiveShowcase() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Live Attendance
+            Daily Attendance
           </button>
           <button
             onClick={() => setActiveTab("batches")}
@@ -87,24 +90,24 @@ export function InteractiveShowcase() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Capacity Engine
+            Batch Capacities
           </button>
           <button
-            onClick={() => setActiveTab("roster")}
+            onClick={() => setActiveTab("assignments")}
             className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
-              activeTab === "roster"
+              activeTab === "assignments"
                 ? "bg-white text-slate-900 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Database Schema
+            MCQ Quizzes
           </button>
         </div>
 
-        {/* Live sync pill */}
+        {/* Live preview pill */}
         <div className="hidden sm:flex items-center gap-1.5 font-mono text-[11px] text-emerald-600 font-semibold bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200/60">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          Supabase v2 Sync
+          Interactive Demo
         </div>
       </div>
 
@@ -117,14 +120,14 @@ export function InteractiveShowcase() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-slate-900 text-sm">
-                    JEE Physics 2026 — Batch A
+                    Class 12 Physics — Morning Batch A
                   </span>
                   <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                    Room 302
+                    Room 102
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Instructor: Dr. Vikram Malhotra • Session: Mechanics & Vectors
+                  Subject: Mechanics • 30 Total Seats
                 </p>
               </div>
 
@@ -146,7 +149,7 @@ export function InteractiveShowcase() {
                   href="/attendance"
                   className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
                 >
-                  Save Batch
+                  Go to Attendance
                 </Link>
               </div>
             </div>
@@ -163,7 +166,7 @@ export function InteractiveShowcase() {
                 Absent: {absentCount}
               </span>
               <span className="text-slate-400 text-xs ml-auto">
-                Click any status pill to toggle in real-time
+                Tip: Click any status badge below to toggle
               </span>
             </div>
 
@@ -174,7 +177,7 @@ export function InteractiveShowcase() {
                   <tr>
                     <th className="px-4 py-2.5">Roll No</th>
                     <th className="px-4 py-2.5">Student Name</th>
-                    <th className="px-4 py-2.5">Check-in Time</th>
+                    <th className="px-4 py-2.5">Recorded Time</th>
                     <th className="px-4 py-2.5 text-right">Status Action</th>
                   </tr>
                 </thead>
@@ -229,14 +232,14 @@ export function InteractiveShowcase() {
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">
-                  Active Cohorts & Capacity Safeguards
+                  Active Batches & Seat Limits
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Automated validation prevents batch over-enrollment at the database level.
+                  Keep classrooms comfortable by tracking enrolled counts against physical seat capacity.
                 </p>
               </div>
               <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 border border-indigo-100">
-                3 Batches Running
+                3 Batches Active
               </span>
             </div>
 
@@ -244,19 +247,19 @@ export function InteractiveShowcase() {
               <div className="rounded-xl border border-slate-200/90 bg-slate-50/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-                    Physics JEE
+                    Physics
                   </span>
                   <span className="rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5">
-                    93% Full
+                    28 / 30 Filled
                   </span>
                 </div>
                 <h5 className="font-bold text-slate-800 text-sm">
-                  Morning Advanced Batch
+                  Class 12 Morning Batch
                 </h5>
                 <div>
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
                     <span>Enrolled: 28 students</span>
-                    <span className="font-semibold text-slate-700">28 / 30</span>
+                    <span className="font-semibold text-slate-700">93% capacity</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                     <div
@@ -265,22 +268,22 @@ export function InteractiveShowcase() {
                     />
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400 font-medium">
-                  2 seats remaining before registration lock
+                <p className="text-[11px] text-amber-600 font-medium">
+                  2 seats remaining for admission
                 </p>
               </div>
 
               <div className="rounded-xl border border-rose-200 bg-rose-50/30 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600">
-                    Organic Chem
+                    Chemistry
                   </span>
                   <span className="rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold px-1.5 py-0.5">
-                    100% Full
+                    Batch Full
                   </span>
                 </div>
                 <h5 className="font-bold text-slate-800 text-sm">
-                  NEET Intensive Cohort
+                  NEET Evening Batch
                 </h5>
                 <div>
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
@@ -295,26 +298,26 @@ export function InteractiveShowcase() {
                   </div>
                 </div>
                 <p className="text-[11px] text-rose-600 font-semibold">
-                  Capacity reached • Automatic waitlist active
+                  Maximum capacity reached
                 </p>
               </div>
 
               <div className="rounded-xl border border-slate-200/90 bg-slate-50/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-purple-600">
-                    Maths Olympiad
+                    Mathematics
                   </span>
                   <span className="rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5">
-                    40% Full
+                    12 / 30 Filled
                   </span>
                 </div>
                 <h5 className="font-bold text-slate-800 text-sm">
-                  Weekend Foundation
+                  Foundation Weekend
                 </h5>
                 <div>
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
                     <span>Enrolled: 12 students</span>
-                    <span className="font-semibold text-slate-700">12 / 30</span>
+                    <span className="font-semibold text-slate-700">40% capacity</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                     <div
@@ -324,72 +327,97 @@ export function InteractiveShowcase() {
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-400 font-medium">
-                  18 seats available for new admissions
+                  18 seats open for enrollment
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {activeTab === "roster" && (
+        {activeTab === "assignments" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h4 className="font-bold text-slate-900 text-sm font-mono">
-                  Supabase Database Schema & Constraints
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Interactive MCQ Quiz Preview
                 </h4>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  PostgreSQL relational schema with foreign keys and unique attendance constraints.
+                  Teachers create quizzes with answer keys. Students submit online and get their scores instantly.
                 </p>
               </div>
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono text-slate-600">
-                schema: public
+              <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                Physics Chapter 3
               </span>
             </div>
 
-            <div className="rounded-xl bg-slate-900 p-4 font-mono text-xs text-slate-200 overflow-x-auto space-y-2">
-              <p className="text-slate-400">
-                <span className="text-blue-400">-- Attendance Table Definition</span>
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-600 font-mono">
+                  QUESTION 1 OF 5 • 4 MARKS
+                </span>
+                <span className="text-xs text-slate-400">
+                  Batch: Class 12 Morning
+                </span>
+              </div>
+
+              <p className="text-sm font-semibold text-slate-800">
+                A passenger in a moving bus leans forward when the driver suddenly applies brakes. Which principle explains this phenomenon?
               </p>
-              <p>
-                <span className="text-purple-400">CREATE TABLE</span> attendance (
-              </p>
-              <p className="pl-4">
-                id <span className="text-emerald-400">BIGSERIAL PRIMARY KEY</span>,
-              </p>
-              <p className="pl-4">
-                student_id <span className="text-emerald-400">BIGINT NOT NULL REFERENCES</span> student(id),
-              </p>
-              <p className="pl-4">
-                batch_id <span className="text-emerald-400">BIGINT NOT NULL REFERENCES</span> batch(id),
-              </p>
-              <p className="pl-4">
-                date <span className="text-emerald-400">DATE NOT NULL</span>,
-              </p>
-              <p className="pl-4">
-                status <span className="text-emerald-400">VARCHAR(20) NOT NULL</span>,
-              </p>
-              <p className="pl-4 text-amber-300">
-                UNIQUE(student_id, batch_id, date) -- Prevents duplicate submissions
-              </p>
-              <p>);</p>
+
+              <div className="space-y-2">
+                {[
+                  { id: 0, text: "Newton's First Law (Law of Inertia)", correct: true },
+                  { id: 1, text: "Newton's Second Law (Force = Mass × Acceleration)", correct: false },
+                  { id: 2, text: "Newton's Third Law (Action and Reaction)", correct: false },
+                  { id: 3, text: "Law of Conservation of Energy", correct: false },
+                ].map((opt) => {
+                  const isSelected = selectedOption === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setSelectedOption(opt.id)}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl border text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
+                        isSelected
+                          ? opt.correct
+                            ? "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold"
+                            : "border-rose-400 bg-rose-50 text-rose-900 font-semibold"
+                          : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                      }`}
+                    >
+                      <span>{opt.text}</span>
+                      {isSelected && (
+                        <span className="text-xs font-bold font-mono">
+                          {opt.correct ? "✓ Correct (+4)" : "✗ Incorrect"}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedOption !== null && (
+                <div className="mt-3 rounded-lg bg-blue-50/70 border border-blue-100 p-3 text-xs text-blue-900">
+                  <span className="font-bold">Automated grading:</span> Students see their answers and final score as soon as they submit, saving hours of manual correction.
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Terminal Footer Strip */}
+      {/* Footer Strip */}
       <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 flex flex-wrap items-center justify-between text-[11px] text-slate-500 font-mono gap-2">
         <div className="flex items-center gap-3">
-          <span>● REST API: 200 OK</span>
-          <span>● Auth: Google OAuth 2.0</span>
-          <span>● Latency: 14ms</span>
+          <span>● Fast Roll-Call</span>
+          <span>● Batch Seat Limits</span>
+          <span>● Auto-Graded MCQ Quizzes</span>
         </div>
         <div className="font-sans font-semibold text-blue-600 hover:text-blue-800">
-          <Link href="/dashboard">Launch Interactive Workspace →</Link>
+          <Link href="/dashboard">Open CoachingHub Dashboard →</Link>
         </div>
       </div>
     </div>
   );
 }
+
 
